@@ -8,6 +8,7 @@ class WeatherApiApplicationTests {
 
     @Test
     void contextLoads() {
+        //Проверка, что Spring Boot контекст загружается без ошибок
     }
 
 }
