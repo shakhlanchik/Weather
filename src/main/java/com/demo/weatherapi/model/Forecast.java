@@ -12,9 +12,9 @@ public class Forecast {
     private final List<DailyWeather> forecast;
     private List<DailyWeather> dailyForecast;
 
-    public Forecast(int cityId, List<DailyWeather> forecast) {
+    public Forecast(int cityId, List<DailyWeather> tempForecast) {
         this.cityId = cityId;
-        this.forecast = forecast;
+        this.forecast = tempForecast;
     }
 
 }
