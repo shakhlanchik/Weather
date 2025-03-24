@@ -21,7 +21,6 @@ public class ForecastService {
         }
         forecast.setCityId(cityId);
         FORECAST_REPOSITORY_MAP.put(cityId, forecast);
-        System.out.printf("Saved forecast for cityID: %d%n", cityId);
     }
 
     public List<Forecast> readAll() {

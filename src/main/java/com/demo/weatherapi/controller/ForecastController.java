@@ -24,7 +24,6 @@ public class ForecastController {
 
     @PostMapping("/{cityId}")
     public ResponseEntity<?> create(@PathVariable int cityId, @RequestBody Forecast forecast) {
-        System.out.printf("Received request to create forecast for cityID: %d%n", cityId);
         forecastService.create(cityId, forecast); // Передаем ID из URL
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body("{\"message\": \"Forecast created successfully\"}");
