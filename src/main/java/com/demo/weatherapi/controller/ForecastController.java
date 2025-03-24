@@ -46,4 +46,5 @@ public class ForecastController {
                 ? new ResponseEntity<>(forecast, HttpStatus.OK)
                 : new ResponseEntity<>(HttpStatus.NOT_FOUND);
     }
+
 }

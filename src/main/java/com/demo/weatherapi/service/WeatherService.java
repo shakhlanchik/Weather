@@ -28,6 +28,18 @@ public class WeatherService {
         return WEATHER_REPOSITORY_MAP.get(id);
     }
 
+    public List<Weather> findByCondition(String condition) {
+        List<Weather> result = new ArrayList<>();
+
+        for (Weather weather : WEATHER_REPOSITORY_MAP.values()) {
+            if (weather.getCondition().equalsIgnoreCase(condition)) {
+                result.add(weather);
+            }
+        }
+
+        return result;
+    }
+
     public boolean update(Weather weather, int id) {
         if (WEATHER_REPOSITORY_MAP.containsKey(id)) {
             weather.setCityId(id);
