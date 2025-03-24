@@ -9,12 +9,11 @@ import lombok.Setter;
 
 public class Forecast {
     private int cityId;
-    private final List<DailyWeather> tempForecast;
-    private List<DailyWeather> dailyForecast;
+    private final List<DailyWeather> forecast;
 
-    public Forecast(int cityId, List<DailyWeather> tempForecast) {
+    public Forecast(int cityId, List<DailyWeather> forecast) {
         this.cityId = cityId;
-        this.tempForecast = tempForecast;
+        this.forecast = forecast;
     }
 
 }
