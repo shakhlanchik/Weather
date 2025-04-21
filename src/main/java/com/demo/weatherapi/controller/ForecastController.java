@@ -5,9 +5,11 @@ import com.demo.weatherapi.service.ForecastService;
 import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -22,29 +24,50 @@ public class ForecastController {
         this.forecastService = forecastService;
     }
 
-    @PostMapping("/{cityId}")
-    public ResponseEntity<?> create(@PathVariable int cityId, @RequestBody Forecast forecast) {
-        forecastService.create(cityId, forecast); // Передаем ID из URL
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body("{\"message\": \"Forecast created successfully\"}");
+    // Создание прогноза
+    @PostMapping
+    public ResponseEntity<String> create(@RequestBody Forecast forecast) {
+        forecastService.create(forecast);
+        return new ResponseEntity<>(
+                "{\"message\": \"Forecast created successfully\"}",
+                HttpStatus.CREATED
+        );
     }
 
-    @GetMapping("/all")
+    // Получение всех прогнозов
+    @GetMapping
     public ResponseEntity<List<Forecast>> readAll() {
-        final List<Forecast> forecasts = forecastService.readAll();
-
-        return forecasts != null &&  !forecasts.isEmpty()
-                ? new ResponseEntity<>(forecasts, HttpStatus.OK)
-                : new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        List<Forecast> forecasts = forecastService.readAll();
+        if (forecasts.isEmpty()) {
+            return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+        }
+        return new ResponseEntity<>(forecasts, HttpStatus.OK);
     }
 
+    // Получение прогноза по cityId
     @GetMapping("/{cityId}")
-    public ResponseEntity<Forecast> read(@PathVariable(name = "cityId") int cityId) {
-        final Forecast forecast = forecastService.read(cityId);
-
+    public ResponseEntity<Forecast> read(@PathVariable int cityId) {
+        Forecast forecast = forecastService.read(cityId);
         return forecast != null
                 ? new ResponseEntity<>(forecast, HttpStatus.OK)
                 : new ResponseEntity<>(HttpStatus.NOT_FOUND);
     }
 
+    // Обновление прогноза по cityId
+    @PutMapping("/{cityId}")
+    public ResponseEntity<String> update(@PathVariable int cityId, @RequestBody Forecast forecast) {
+        boolean updated = forecastService.update(forecast, cityId);
+        return updated
+                ? ResponseEntity.ok("{\"message\": \"Forecast updated successfully\"}")
+                : new ResponseEntity<>("{\"error\": \"Forecast not found\"}", HttpStatus.NOT_FOUND);
+    }
+
+    // Удаление прогноза по cityId
+    @DeleteMapping("/{cityId}")
+    public ResponseEntity<String> delete(@PathVariable int cityId) {
+        boolean deleted = forecastService.delete(cityId);
+        return deleted
+                ? ResponseEntity.ok("{\"message\": \"Forecast deleted successfully\"}")
+                : new ResponseEntity<>("{\"error\": \"Forecast not found\"}", HttpStatus.NOT_FOUND);
+    }
 }
