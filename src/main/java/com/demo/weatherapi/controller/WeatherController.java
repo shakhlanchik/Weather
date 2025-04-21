@@ -13,7 +13,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -49,15 +48,6 @@ public class WeatherController {
         return weather != null
                 ? new ResponseEntity<>(weather, HttpStatus.OK)
                 : new ResponseEntity<>(HttpStatus.NOT_FOUND);
-    }
-
-    @GetMapping("/search/by-condition")
-    public ResponseEntity<List<Weather>> searchByCondition(@RequestParam String condition) {
-        final List<Weather> results = weatherService.findByCondition(condition);
-
-        return results.isEmpty()
-                ? ResponseEntity.status(HttpStatus.NOT_FOUND).body(results)
-                : ResponseEntity.ok(results);
     }
 
     @DeleteMapping("/{id}")
