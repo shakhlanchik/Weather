@@ -24,7 +24,6 @@ public class ForecastController {
         this.forecastService = forecastService;
     }
 
-    // Создание прогноза
     @PostMapping
     public ResponseEntity<String> create(@RequestBody Forecast forecast) {
         forecastService.create(forecast);
@@ -34,7 +33,6 @@ public class ForecastController {
         );
     }
 
-    // Получение всех прогнозов
     @GetMapping
     public ResponseEntity<List<Forecast>> readAll() {
         List<Forecast> forecasts = forecastService.readAll();
@@ -44,7 +42,6 @@ public class ForecastController {
         return new ResponseEntity<>(forecasts, HttpStatus.OK);
     }
 
-    // Получение прогноза по cityId
     @GetMapping("/{cityId}")
     public ResponseEntity<Forecast> read(@PathVariable int cityId) {
         Forecast forecast = forecastService.read(cityId);
@@ -53,7 +50,6 @@ public class ForecastController {
                 : new ResponseEntity<>(HttpStatus.NOT_FOUND);
     }
 
-    // Обновление прогноза по cityId
     @PutMapping("/{cityId}")
     public ResponseEntity<String> update(@PathVariable int cityId, @RequestBody Forecast forecast) {
         boolean updated = forecastService.update(forecast, cityId);
@@ -62,7 +58,6 @@ public class ForecastController {
                 : new ResponseEntity<>("{\"error\": \"Forecast not found\"}", HttpStatus.NOT_FOUND);
     }
 
-    // Удаление прогноза по cityId
     @DeleteMapping("/{cityId}")
     public ResponseEntity<String> delete(@PathVariable int cityId) {
         boolean deleted = forecastService.delete(cityId);

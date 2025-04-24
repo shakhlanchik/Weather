@@ -29,4 +29,8 @@ public class CityService {
     public void delete(Integer id) {
         cityRepository.deleteById(id);
     }
+
+    public void update(City city) {
+        cityRepository.save(city);
+    }
 }
