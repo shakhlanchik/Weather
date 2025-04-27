@@ -1,7 +1,9 @@
 package com.demo.weatherapi.controller;
 
+import com.demo.weatherapi.cache.ForecastCache;
 import com.demo.weatherapi.model.Forecast;
 import com.demo.weatherapi.service.ForecastService;
+import java.time.LocalDate;
 import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -12,6 +14,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -19,6 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class ForecastController {
 
     private final ForecastService forecastService;
+    private ForecastCache forecastCache;
 
     public ForecastController(ForecastService forecastService) {
         this.forecastService = forecastService;
@@ -64,5 +68,21 @@ public class ForecastController {
         return deleted
                 ? ResponseEntity.ok("{\"message\": \"Forecast deleted successfully\"}")
                 : new ResponseEntity<>("{\"error\": \"Forecast not found\"}", HttpStatus.NOT_FOUND);
+    }
+
+    @GetMapping("/filter")
+    public ResponseEntity<List<Forecast>> getForecastsByCityAndDate(
+            @RequestParam Integer cityId,
+            @RequestParam String date) {
+
+        LocalDate parsedDate = LocalDate.parse(date); // формат YYYY-MM-DD
+        List<Forecast> forecasts = forecastService.getForecastsByCityIdAndDate(cityId, parsedDate);
+        return ResponseEntity.ok(forecasts);
+    }
+
+
+    @GetMapping("/cache/status")
+    public ResponseEntity<?> getCacheStatus() {
+        return ResponseEntity.ok(forecastCache.getAllKeys());
     }
 }

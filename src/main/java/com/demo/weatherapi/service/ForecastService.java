@@ -1,6 +1,7 @@
 package com.demo.weatherapi.service;
 
 import com.demo.weatherapi.model.Forecast;
+import java.time.LocalDate;
 import java.util.List;
 
 public interface ForecastService {
@@ -14,4 +15,5 @@ public interface ForecastService {
 
     boolean delete(int cityId);
 
+    List<Forecast> getForecastsByCityIdAndDate(Integer cityId, LocalDate date);
 }
