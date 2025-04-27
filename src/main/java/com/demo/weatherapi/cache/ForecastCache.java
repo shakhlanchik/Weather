@@ -28,8 +28,4 @@ public class ForecastCache {
     public List<String> getAllKeys() {
         return List.copyOf(cache.keySet());
     }
-
-//    public void clear() {
-//        cache.clear();
-//    }
 }
