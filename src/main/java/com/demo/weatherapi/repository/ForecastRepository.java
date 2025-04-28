@@ -11,4 +11,7 @@ public interface ForecastRepository extends JpaRepository<Forecast, Long> {
     @Query("SELECT f FROM Forecast f WHERE f.city.id = :cityId AND f.date = :date")
     List<Forecast> findForecastsByCityIdAndDate(
             @Param("cityId") Integer cityId, @Param("date") LocalDate date);
+
+    @Query("SELECT f FROM Forecast f WHERE f.city.id = :cityId")
+    List<Forecast> findByCityId(@Param("cityId") Integer cityId);
 }

@@ -80,6 +80,13 @@ public class ForecastController {
         return ResponseEntity.ok(forecasts);
     }
 
+    @GetMapping("/by-city/{cityId}")
+    public ResponseEntity<List<Forecast>> getForecastsByCityId(@PathVariable int cityId) {
+        List<Forecast> forecasts = forecastService.getForecastsByCityId(cityId);
+        return forecasts != null && !forecasts.isEmpty()
+                ? new ResponseEntity<>(forecasts, HttpStatus.OK)
+                : new ResponseEntity<>(HttpStatus.NOT_FOUND);
+    }
 
     @GetMapping("/cache/status")
     public ResponseEntity<?> getCacheStatus() {

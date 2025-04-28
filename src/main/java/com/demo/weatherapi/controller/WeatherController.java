@@ -21,7 +21,7 @@ public class WeatherController {
 
     private final WeatherService weatherService;
 
-    @Autowired // Внедрение зависимости через конструктор
+    @Autowired
     public WeatherController(WeatherService weatherService) {
         this.weatherService = weatherService;
     }

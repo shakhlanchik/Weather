@@ -75,4 +75,8 @@ public class ForecastServiceImpl implements ForecastService {
         }
         return forecasts;
     }
+
+    public List<Forecast> getForecastsByCityId(Integer cityId) {
+        return forecastRepository.findByCityId(cityId);
+    }
 }
