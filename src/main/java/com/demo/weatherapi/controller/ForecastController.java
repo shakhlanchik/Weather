@@ -1,10 +1,17 @@
 package com.demo.weatherapi.controller;
 
 import com.demo.weatherapi.cache.ForecastCache;
+import com.demo.weatherapi.dto.ForecastDto;
+import com.demo.weatherapi.exception.NotFoundException;
+import com.demo.weatherapi.model.City;
 import com.demo.weatherapi.model.Forecast;
+import com.demo.weatherapi.repository.CityRepository;
+import com.demo.weatherapi.repository.ForecastRepository;
 import com.demo.weatherapi.service.ForecastService;
+import jakarta.validation.Valid;
 import java.time.LocalDate;
 import java.util.List;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -23,19 +30,31 @@ public class ForecastController {
 
     private final ForecastService forecastService;
     private ForecastCache forecastCache;
+    private CityRepository cityRepository;
+    private ForecastRepository forecastRepository;
 
     public ForecastController(ForecastService forecastService) {
         this.forecastService = forecastService;
     }
 
     @PostMapping
-    public ResponseEntity<String> create(@RequestBody Forecast forecast) {
-        forecastService.create(forecast);
-        return new ResponseEntity<>(
-                "{\"message\": \"Forecast created successfully\"}",
-                HttpStatus.CREATED
-        );
+    public ResponseEntity<?> createForecast(@Valid @RequestBody ForecastDto request) {
+        City city = cityRepository.findById(request.getCityId())
+                .orElseThrow(() -> new NotFoundException("City not found"));
+
+        Forecast forecast = new Forecast();
+        forecast.setCity(city);
+        forecast.setDate(request.getDate());
+        forecast.setTemperatureMin(request.getTemperatureMin());
+        forecast.setTemperatureMax(request.getTemperatureMax());
+        forecast.setCondition(request.getCondition());
+        forecast.setHumidity(request.getHumidity());
+        forecast.setWindSpeed(request.getWindSpeed());
+
+        forecastRepository.save(forecast);
+        return ResponseEntity.ok(forecast);
     }
+
 
     @GetMapping
     public ResponseEntity<List<Forecast>> readAll() {

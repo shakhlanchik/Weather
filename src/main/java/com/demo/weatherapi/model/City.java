@@ -36,8 +36,11 @@ public class City {
     @JsonManagedReference
     private List<Forecast> forecasts = new ArrayList<>();
 
-    @OneToMany(mappedBy = "city", fetch = FetchType.LAZY,
-            cascade = CascadeType.ALL, orphanRemoval = true)
-    @JsonManagedReference
-    private List<Weather> weathers = new ArrayList<>();
+    @Override
+    public String toString() {
+        return "City{" +
+                "id=" + id +
+                ", name='" + name + '\'' +
+                '}';
+    }
 }
