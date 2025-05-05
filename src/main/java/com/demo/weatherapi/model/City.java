@@ -35,12 +35,4 @@ public class City {
             cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonManagedReference
     private List<Forecast> forecasts = new ArrayList<>();
-
-    @Override
-    public String toString() {
-        return "City{" +
-                "id=" + id +
-                ", name='" + name + '\'' +
-                '}';
-    }
 }

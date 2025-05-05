@@ -1,12 +1,9 @@
 package com.demo.weatherapi.controller;
 
-import com.demo.weatherapi.dto.CityDto;
 import com.demo.weatherapi.model.City;
-import com.demo.weatherapi.repository.CityRepository;
 import com.demo.weatherapi.service.CityService;
-import jakarta.validation.Valid;
 import java.util.List;
-
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -22,18 +19,15 @@ import org.springframework.web.bind.annotation.RestController;
 public class CityController {
 
     private final CityService cityService;
-    private CityRepository cityRepository;
 
     public CityController(CityService cityService) {
         this.cityService = cityService;
     }
 
     @PostMapping
-    public ResponseEntity<?> createCity(@Valid @RequestBody CityDto request) {
-        City city = new City();
-        city.setName(request.getName());
-        cityRepository.save(city);
-        return ResponseEntity.ok(city);
+    public ResponseEntity<City> createCity(@RequestBody City city) {
+        cityService.create(city);
+        return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 
     @GetMapping("/all")

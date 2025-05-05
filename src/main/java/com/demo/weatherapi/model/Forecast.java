@@ -45,10 +45,4 @@ public class Forecast {
 
     @Column(name = "condition")
     private String condition;
-
-    @Column(name = "humidity")
-    private Double humidity;
-
-    @Column(name = "wind_speed")
-    private Double windSpeed;
 }

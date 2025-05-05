@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class ForecastCache {
 
-    private static final int MAX_CACHE_SIZE = 100;
+    private static final int MAX_CACHE_SIZE = 20;
     private final Map<String, List<Forecast>> cache = new LinkedHashMap<>() {
         @Override
         protected boolean removeEldestEntry(Map.Entry<String, List<Forecast>> eldest) {
