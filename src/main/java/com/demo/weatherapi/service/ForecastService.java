@@ -15,7 +15,7 @@ public interface ForecastService {
 
     boolean delete(int cityId);
 
-    List<Forecast> getForecastsByCityIdAndDate(Integer cityId, LocalDate date);
+    List<Forecast> getForecastsByNameAndDate(String name, LocalDate date);
 
-    public List<Forecast> getForecastsByCityId(Integer cityId);
+    List<Forecast> getForecastsByCityId(Integer cityId);
 }

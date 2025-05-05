@@ -22,7 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class ForecastController {
 
     private final ForecastService forecastService;
-    private ForecastCache forecastCache;
+    ForecastCache forecastCache;
 
     public ForecastController(ForecastService forecastService) {
         this.forecastService = forecastService;
@@ -71,12 +71,12 @@ public class ForecastController {
     }
 
     @GetMapping("/filter")
-    public ResponseEntity<List<Forecast>> getForecastsByCityAndDate(
-            @RequestParam Integer cityId,
+    public ResponseEntity<List<Forecast>> getForecastsByNameAndDate(
+            @RequestParam String name,
             @RequestParam String date) {
 
         LocalDate parsedDate = LocalDate.parse(date); // формат YYYY-MM-DD
-        List<Forecast> forecasts = forecastService.getForecastsByCityIdAndDate(cityId, parsedDate);
+        List<Forecast> forecasts = forecastService.getForecastsByNameAndDate(name, parsedDate);
         return ResponseEntity.ok(forecasts);
     }
 

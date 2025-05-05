@@ -25,6 +25,10 @@ public class ForecastCache {
         cache.put(key, forecasts);
     }
 
+    public void remove(String key) {
+        cache.remove(key);
+    }
+
     public List<String> getAllKeys() {
         return List.copyOf(cache.keySet());
     }

@@ -19,10 +19,43 @@ public class ForecastServiceImpl implements ForecastService {
     private final ForecastRepository forecastRepository;
     private final ForecastCache forecastCache;
 
+    public ForecastServiceImpl(ForecastRepository forecastRepository, ForecastCache forecastCache) {
+        this.forecastRepository = forecastRepository;
+        this.forecastCache = forecastCache;
+    }
+
+    private void updateCacheIfChanged(String cityName, LocalDate date) {
+        String key = cityName + "_" + date;
+        List<Forecast> newForecasts = forecastRepository.findForecastsByNameAndDate(cityName, date);
+        List<Forecast> cachedForecasts = forecastCache.get(key);
+
+        if (!newForecasts.equals(cachedForecasts)) {
+            forecastCache.put(key, newForecasts);
+            logger.info("Кэш обновлён для ключа {} после изменений в БД", key);
+        } else {
+            logger.info("Кэш для ключа {} уже актуален", key);
+        }
+    }
 
     @Override
     public void create(Forecast forecast) {
         forecastRepository.save(forecast);
+
+        updateCacheIfChanged(forecast.getCity().getName(), forecast.getDate());
+    }
+
+    @Override
+    public boolean update(Forecast forecast, int forecastId) {
+        if (forecastRepository.existsById((long) forecastId)) {
+            forecast.setId(forecastId);
+            forecastRepository.save(forecast);
+
+            updateCacheIfChanged(forecast.getCity().getName(), forecast.getDate());
+
+            logger.info("Прогноз с id {} обновлён", forecastId);
+            return true;
+        }
+        return false;
     }
 
     @Override
@@ -37,36 +70,29 @@ public class ForecastServiceImpl implements ForecastService {
     }
 
     @Override
-    public boolean update(Forecast forecast, int cityId) {
-        if (forecastRepository.existsById((long) cityId)) {
-            forecast.setId(cityId);
-            forecastRepository.save(forecast);
+    public boolean delete(int forecastId) {
+        Optional<Forecast> optionalForecast = forecastRepository.findById((long) forecastId);
+        if (optionalForecast.isPresent()) {
+            Forecast forecast = optionalForecast.get();
+
+            forecastRepository.deleteById((long) forecastId);
+
+            String cacheKey = forecast.getCity().getName() + "_" + forecast.getDate();
+            forecastCache.remove(cacheKey);
+
+            logger.info("Прогноз с id {} удалён из БД и кэша для ключа: {}", forecastId, cacheKey);
             return true;
         }
         return false;
     }
 
-    @Override
-    public boolean delete(int cityId) {
-        if (forecastRepository.existsById((long) cityId)) {
-            forecastRepository.deleteById((long) cityId);
-            return true;
-        }
-        return false;
-    }
-
-    public ForecastServiceImpl(ForecastRepository forecastRepository, ForecastCache forecastCache) {
-        this.forecastRepository = forecastRepository;
-        this.forecastCache = forecastCache;
-    }
-
-    public List<Forecast> getForecastsByCityIdAndDate(Integer cityId, LocalDate date) {
-        String key = cityId + "_" + date;
+    public List<Forecast> getForecastsByNameAndDate(String name, LocalDate date) {
+        String key = name + "_" + date;
         List<Forecast> forecasts = Optional.ofNullable(forecastCache.get(key)).orElseGet(() -> {
             List<Forecast> loadedForecasts = forecastRepository
-                    .findForecastsByCityIdAndDate(cityId, date);
-            logger.info("Данные загружены из БД и сохранены в кэш для ключа: {}", key);
+                    .findForecastsByNameAndDate(name, date);
             forecastCache.put(key, loadedForecasts);
+            logger.info("Данные загружены из БД и сохранены в кэш для ключа: {}", key);
             return loadedForecasts;
         });
 
