@@ -28,10 +28,14 @@ public class LoggingAspect {
     @Before("controllerMethods() || serviceMethods()")
     public void logBefore(org.aspectj.lang.JoinPoint joinPoint) {
         MethodSignature methodSignature = (MethodSignature) joinPoint.getSignature();
+
+        Object[] args = (joinPoint != null) ? joinPoint.getArgs() : null;
+        String argsStr = (args != null) ? Arrays.toString(args) : "[]";
+
         logger.info("➡ Вход в метод: {}.{} с аргументами: {}",
                 methodSignature.getDeclaringType().getSimpleName(),
                 methodSignature.getName(),
-                Arrays.toString(joinPoint.getArgs()));
+                argsStr);
     }
 
     @AfterReturning(pointcut = "controllerMethods() || serviceMethods()", returning = "result")
