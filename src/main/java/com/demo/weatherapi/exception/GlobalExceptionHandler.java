@@ -9,7 +9,6 @@ import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -36,7 +35,7 @@ public class GlobalExceptionHandler {
             MethodArgumentNotValidException ex) {
         List<String> errorMessages = ex.getBindingResult().getFieldErrors().stream()
                 .map(error -> error.getField() + ": "
-                        + error.getDefaultMessage()).collect(Collectors.toList());
+                        + error.getDefaultMessage()).toList();
 
         ErrorResponse response = new ErrorResponse(
                 "Ошибки валидации данных прогноза",
