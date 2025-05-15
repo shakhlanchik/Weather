@@ -15,6 +15,7 @@ public class ForecastCache {
     private static final Logger log = LoggerFactory.getLogger(ForecastCache.class);
     private static final int MAX_CACHE_SIZE = 50;
     String cityName = "city:";
+    String date_str = ":date:";
 
     private final Map<Integer, ForecastDto> singleForecastCache = new ConcurrentHashMap<>();
 
@@ -45,7 +46,7 @@ public class ForecastCache {
     }
 
     public List<ForecastDto> getForecastsByNameAndDate(String name, LocalDate date) {
-        String key = "name:" + name + ":date:" + date;
+        String key = "name:" + name + date_str + date;
         return listForecastCache.get(key);
     }
 
@@ -61,7 +62,7 @@ public class ForecastCache {
     }
 
     public void cacheForecastsByNameAndDate(String name, LocalDate date, List<ForecastDto> forecasts) {
-        String key = "name:" + name + ":date:" + date;
+        String key = "name:" + name + date_str + date;
         listForecastCache.put(key, forecasts);
         log.debug("Cached {} forecasts for {} on {}", forecasts.size(), name, date);
     }
@@ -81,7 +82,7 @@ public class ForecastCache {
     }
 
     public void evictForecastsByCityAndDate(Integer cityId, LocalDate date) {
-        String keyPrefix = cityName + cityId + ":date:" + date;
+        String keyPrefix = cityName + cityId + date_str + date;
         listForecastCache.keySet().removeIf(key -> key.startsWith(keyPrefix));
         log.debug("Evicted cache for city {} and date {}", cityId, date);
     }
