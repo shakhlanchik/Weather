@@ -1,21 +1,22 @@
 package com.demo.weatherapi.service;
 
-import com.demo.weatherapi.model.Forecast;
+import com.demo.weatherapi.dto.ForecastDto;
 import java.time.LocalDate;
 import java.util.List;
 
 public interface ForecastService {
-    void create(Forecast forecast);
 
-    List<Forecast> readAll();
+    ForecastDto create(ForecastDto forecastDto);
 
-    Forecast read(int cityId);
+    List<ForecastDto> readAll();
 
-    boolean update(Forecast forecast, int cityId);
+    ForecastDto read(Integer forecastId);
 
-    boolean delete(int cityId);
+    ForecastDto update(ForecastDto forecastDto, Integer forecastId);
 
-    List<Forecast> getForecastsByNameAndDate(String name, LocalDate date);
+    void delete(Integer forecastId);
 
-    List<Forecast> getForecastsByCityId(Integer cityId);
+    List<ForecastDto> getForecastsByNameAndDate(String name, LocalDate date);
+
+    List<ForecastDto> getForecastsByCityId(Integer cityId);
 }

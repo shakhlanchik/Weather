@@ -1,108 +1,193 @@
 package com.demo.weatherapi.service;
 
 import com.demo.weatherapi.cache.ForecastCache;
+import com.demo.weatherapi.dto.ForecastDto;
+import com.demo.weatherapi.exception.BadRequestException;
+import com.demo.weatherapi.exception.ResourceNotFoundException;
+import com.demo.weatherapi.mapper.ForecastMapper;
+import com.demo.weatherapi.model.City;
 import com.demo.weatherapi.model.Forecast;
+import com.demo.weatherapi.repository.CityRepository;
 import com.demo.weatherapi.repository.ForecastRepository;
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
-import java.util.Optional;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
-
 public class ForecastServiceImpl implements ForecastService {
 
-    private static final Logger logger = LoggerFactory.getLogger(ForecastServiceImpl.class);
-
     private final ForecastRepository forecastRepository;
+    private final CityRepository cityRepository;
+    private final ForecastMapper forecastMapper;
     private final ForecastCache forecastCache;
 
-    public ForecastServiceImpl(ForecastRepository forecastRepository, ForecastCache forecastCache) {
+    public ForecastServiceImpl(ForecastRepository forecastRepository,
+                               CityRepository cityRepository,
+                               ForecastMapper forecastMapper,
+                               ForecastCache forecastCache) {
         this.forecastRepository = forecastRepository;
+        this.cityRepository = cityRepository;
+        this.forecastMapper = forecastMapper;
         this.forecastCache = forecastCache;
     }
 
-    private void updateCacheIfChanged(String cityName, LocalDate date) {
-        String key = cityName + "_" + date;
-        List<Forecast> newForecasts = forecastRepository.findForecastsByNameAndDate(cityName, date);
-        List<Forecast> cachedForecasts = forecastCache.get(key);
+    @Override
+    @Transactional
+    public ForecastDto create(ForecastDto forecastDto) {
+        validateForecastDto(forecastDto);
 
-        if (!newForecasts.equals(cachedForecasts)) {
-            forecastCache.put(key, newForecasts);
-            logger.info("Кэш обновлён для ключа {} после изменений в БД", key);
-        } else {
-            logger.info("Кэш для ключа {} уже актуален", key);
+        City city = cityRepository.findById(forecastDto.getCityId()).orElseThrow(() ->
+                new BadRequestException("Город с ID " + forecastDto.getCityId() + " не найден"));
+
+        if (forecastRepository.existsByCityAndDate(city, forecastDto.getDate())) {
+            throw new BadRequestException(
+                    String.format("Прогноз на %s для города %s уже существует",
+                            forecastDto.getDate().format(DateTimeFormatter.ISO_DATE),
+                            city.getName()));
         }
+
+        Forecast forecast = forecastMapper.toEntity(forecastDto);
+        forecast.setCity(city);
+        Forecast savedForecast = forecastRepository.save(forecast);
+        ForecastDto savedDto = forecastMapper.toDto(savedForecast);
+
+        forecastCache.cacheSingleForecast(savedDto);
+        forecastCache.evictForecastsByCity(city.getId());
+        forecastCache.evictForecastsByCityAndDate(city.getId(), forecastDto.getDate());
+
+        return savedDto;
     }
 
     @Override
-    public void create(Forecast forecast) {
-        forecastRepository.save(forecast);
-
-        updateCacheIfChanged(forecast.getCity().getName(), forecast.getDate());
+    @Transactional(readOnly = true)
+    public List<ForecastDto> readAll() {
+        return forecastRepository.findAll().stream()
+                .map(forecastMapper::toDto)
+                .collect(Collectors.toList());
     }
 
     @Override
-    public boolean update(Forecast forecast, int forecastId) {
-        if (forecastRepository.existsById((long) forecastId)) {
-            forecast.setId(forecastId);
-            forecastRepository.save(forecast);
-
-            updateCacheIfChanged(forecast.getCity().getName(), forecast.getDate());
-
-            logger.info("Прогноз с id {} обновлён", forecastId);
-            return true;
+    @Transactional(readOnly = true)
+    public ForecastDto read(Integer forecastId) {
+        ForecastDto cached = forecastCache.getForecastById(forecastId);
+        if (cached != null) {
+            return cached;
         }
-        return false;
+
+        Forecast forecast = forecastRepository.findById(forecastId).orElseThrow(() ->
+                new ResourceNotFoundException("Прогноз с id " + forecastId + " не найден"));
+
+        ForecastDto dto = forecastMapper.toDto(forecast);
+        forecastCache.cacheSingleForecast(dto);
+        return dto;
     }
 
     @Override
-    public List<Forecast> readAll() {
-        return forecastRepository.findAll();
+    @Transactional
+    public ForecastDto update(ForecastDto forecastDto, Integer forecastId) {
+        validateForecastDto(forecastDto);
+
+        Forecast existingForecast = forecastRepository.findById(forecastId).orElseThrow(() ->
+                new ResourceNotFoundException("Прогноз с id " + forecastId + " не найден"));
+
+        City city = cityRepository.findById(forecastDto.getCityId()).orElseThrow(() ->
+                new BadRequestException("Город с ID " + forecastDto.getCityId() + " не найден"));
+
+        forecastMapper.updateFromDto(forecastDto, existingForecast);
+        existingForecast.setCity(city);
+
+        Forecast updatedForecast = forecastRepository.save(existingForecast);
+        ForecastDto updatedDto = forecastMapper.toDto(updatedForecast);
+
+        forecastCache.cacheSingleForecast(updatedDto);
+        forecastCache.evictForecastsByCity(city.getId());
+        forecastCache.evictForecastsByCityAndDate(city.getId(), forecastDto.getDate());
+
+        return updatedDto;
     }
 
     @Override
-    public Forecast read(int cityId) {
-        Optional<Forecast> forecast = forecastRepository.findById((long) cityId);
-        return forecast.orElse(null);
+    @Transactional
+    public void delete(Integer forecastId) {
+        Forecast forecast = forecastRepository.findById(forecastId).orElseThrow(() ->
+                new ResourceNotFoundException("Прогноз с id " + forecastId + " не найден"));
+
+        Integer cityId = forecast.getCity().getId();
+        final LocalDate date = forecast.getDate();
+
+        forecastRepository.delete(forecast);
+
+        forecastCache.evictSingleForecast(forecastId);
+        forecastCache.evictForecastsByCity(cityId);
+        forecastCache.evictForecastsByCityAndDate(cityId, date);
+
     }
 
     @Override
-    public boolean delete(int forecastId) {
-        Optional<Forecast> optionalForecast = forecastRepository.findById((long) forecastId);
-        if (optionalForecast.isPresent()) {
-            Forecast forecast = optionalForecast.get();
-
-            forecastRepository.deleteById((long) forecastId);
-
-            String cacheKey = forecast.getCity().getName() + "_" + forecast.getDate();
-            forecastCache.remove(cacheKey);
-
-            logger.info("Прогноз с id {} удалён из БД и кэша для ключа: {}", forecastId, cacheKey);
-            return true;
+    @Transactional(readOnly = true)
+    public List<ForecastDto> getForecastsByNameAndDate(String name, LocalDate date) {
+        if (name == null || name.isEmpty() || date == null) {
+            throw new BadRequestException("Имя города и дата обязательны");
         }
-        return false;
-    }
 
-    public List<Forecast> getForecastsByNameAndDate(String name, LocalDate date) {
-        String key = name + "_" + date;
-        List<Forecast> forecasts = Optional.ofNullable(forecastCache.get(key)).orElseGet(() -> {
-            List<Forecast> loadedForecasts = forecastRepository
-                    .findForecastsByNameAndDate(name, date);
-            forecastCache.put(key, loadedForecasts);
-            logger.info("Данные загружены из БД и сохранены в кэш для ключа: {}", key);
-            return loadedForecasts;
-        });
-
-        if (forecasts == forecastCache.get(key)) {
-            logger.info("Данные получены из кэша для ключа: {}", key);
+        List<ForecastDto> cached = forecastCache.getForecastsByNameAndDate(name, date);
+        if (cached != null) {
+            return cached;
         }
+
+        List<ForecastDto> forecasts = forecastRepository.findForecastsByNameAndDate(name, date)
+                .stream().map(forecastMapper::toDto).collect(Collectors.toList());
+
+        forecastCache.cacheForecastsByNameAndDate(name, date, forecasts);
         return forecasts;
     }
 
-    public List<Forecast> getForecastsByCityId(Integer cityId) {
-        return forecastRepository.findByCityId(cityId);
+    @Override
+    @Transactional(readOnly = true)
+    public List<ForecastDto> getForecastsByCityId(Integer cityId) {
+        if (cityId == null || cityId <= 0) {
+            throw new BadRequestException("Некорректный ID города");
+        }
+
+        List<ForecastDto> cached = forecastCache.getForecastsByCityId(cityId);
+        if (cached != null) {
+            return cached;
+        }
+
+        List<ForecastDto> forecasts = forecastRepository.findByCityId(cityId).stream()
+                .map(forecastMapper::toDto)
+                .collect(Collectors.toList());
+
+        forecastCache.cacheForecastsByCityId(cityId, forecasts);
+        return forecasts;
+    }
+
+    private void validateForecastDto(ForecastDto forecastDto) {
+        if (forecastDto == null || forecastDto.getCityId() == null
+                || forecastDto.getDate() == null) {
+            throw new BadRequestException("Некорректные данные прогноза");
+        }
+
+        if (forecastDto.getTemperatureMin() > forecastDto.getTemperatureMax()) {
+            throw new BadRequestException(
+                "Минимальная температура не может быть выше максимальной");
+        }
+
+        if (forecastDto.getTemperatureMin() < -100) {
+            throw new BadRequestException("Минимальная температура не может быть ниже -100°C");
+        }
+
+        if (forecastDto.getTemperatureMin() > 100) {
+            throw new BadRequestException("Минимальная температура не может быть выше 100°C");
+
+        }
+
+        if (forecastDto.getTemperatureMax() > 100) {
+            throw new BadRequestException("Максимальная температура не может быть выше 100°C");
+
+        }
     }
 }
