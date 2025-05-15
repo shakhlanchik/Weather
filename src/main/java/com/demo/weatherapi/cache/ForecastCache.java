@@ -61,7 +61,8 @@ public class ForecastCache {
         log.debug("Cached {} forecasts for city {}", forecasts.size(), cityId);
     }
 
-    public void cacheForecastsByNameAndDate(String name, LocalDate date, List<ForecastDto> forecasts) {
+    public void cacheForecastsByNameAndDate(
+            String name, LocalDate date, List<ForecastDto> forecasts) {
         String key = "name:" + name + dateStr + date;
         listForecastCache.put(key, forecasts);
         log.debug("Cached {} forecasts for {} on {}", forecasts.size(), name, date);

@@ -12,7 +12,6 @@ import com.demo.weatherapi.repository.ForecastRepository;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
-import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -160,8 +159,7 @@ public class ForecastServiceImpl implements ForecastService {
         }
 
         List<ForecastDto> forecasts = forecastRepository.findByCityId(cityId).stream()
-                .map(forecastMapper::toDto)
-                .collect(Collectors.toList());
+                .map(forecastMapper::toDto).toList();
 
         forecastCache.cacheForecastsByCityId(cityId, forecasts);
         return forecasts;
