@@ -68,7 +68,7 @@ public class ForecastServiceImpl implements ForecastService {
     public List<ForecastDto> readAll() {
         return forecastRepository.findAll().stream()
                 .map(forecastMapper::toDto)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     @Override
@@ -141,7 +141,7 @@ public class ForecastServiceImpl implements ForecastService {
         }
 
         List<ForecastDto> forecasts = forecastRepository.findForecastsByNameAndDate(name, date)
-                .stream().map(forecastMapper::toDto).collect(Collectors.toList());
+                .stream().map(forecastMapper::toDto).toList();
 
         forecastCache.cacheForecastsByNameAndDate(name, date, forecasts);
         return forecasts;
