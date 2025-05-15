@@ -23,6 +23,8 @@ public class ForecastServiceImpl implements ForecastService {
     private final CityRepository cityRepository;
     private final ForecastMapper forecastMapper;
     private final ForecastCache forecastCache;
+    String cityWithId = "Город с ID ";
+    String notFound = " не найден";
 
     public ForecastServiceImpl(ForecastRepository forecastRepository,
                                CityRepository cityRepository,
@@ -40,7 +42,7 @@ public class ForecastServiceImpl implements ForecastService {
         validateForecastDto(forecastDto);
 
         City city = cityRepository.findById(forecastDto.getCityId()).orElseThrow(() ->
-                new BadRequestException("Город с ID " + forecastDto.getCityId() + " не найден"));
+                new BadRequestException(cityWithId + forecastDto.getCityId() + notFound));
 
         if (forecastRepository.existsByCityAndDate(city, forecastDto.getDate())) {
             throw new BadRequestException(
@@ -78,7 +80,7 @@ public class ForecastServiceImpl implements ForecastService {
         }
 
         Forecast forecast = forecastRepository.findById(forecastId).orElseThrow(() ->
-                new ResourceNotFoundException("Прогноз с id " + forecastId + " не найден"));
+                new ResourceNotFoundException(cityWithId + forecastId + notFound));
 
         ForecastDto dto = forecastMapper.toDto(forecast);
         forecastCache.cacheSingleForecast(dto);
@@ -91,10 +93,10 @@ public class ForecastServiceImpl implements ForecastService {
         validateForecastDto(forecastDto);
 
         Forecast existingForecast = forecastRepository.findById(forecastId).orElseThrow(() ->
-                new ResourceNotFoundException("Прогноз с id " + forecastId + " не найден"));
+                new ResourceNotFoundException(cityWithId + forecastId + notFound));
 
         City city = cityRepository.findById(forecastDto.getCityId()).orElseThrow(() ->
-                new BadRequestException("Город с ID " + forecastDto.getCityId() + " не найден"));
+                new BadRequestException(cityWithId + forecastDto.getCityId() + notFound));
 
         forecastMapper.updateFromDto(forecastDto, existingForecast);
         existingForecast.setCity(city);
@@ -113,7 +115,7 @@ public class ForecastServiceImpl implements ForecastService {
     @Transactional
     public void delete(Integer forecastId) {
         Forecast forecast = forecastRepository.findById(forecastId).orElseThrow(() ->
-                new ResourceNotFoundException("Прогноз с id " + forecastId + " не найден"));
+                new ResourceNotFoundException(cityWithId + forecastId + notFound));
 
         Integer cityId = forecast.getCity().getId();
         final LocalDate date = forecast.getDate();

@@ -48,7 +48,7 @@ public class LogController {
         }
 
         try (BufferedReader reader = Files.newBufferedReader(logPath)) {
-            List<String> lines = reader.lines().collect(Collectors.toList());
+            List<String> lines = reader.lines().toList();
 
             if (lines.isEmpty()) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
