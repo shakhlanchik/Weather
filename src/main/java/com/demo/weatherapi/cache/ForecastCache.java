@@ -13,7 +13,8 @@ import org.springframework.stereotype.Component;
 @Component
 public class ForecastCache {
     private static final Logger log = LoggerFactory.getLogger(ForecastCache.class);
-    private static final int MAX_CACHE_SIZE = 1000;
+    private static final int MAX_CACHE_SIZE = 50;
+    String cityName = "city:";
 
     private final Map<Integer, ForecastDto> singleForecastCache = new ConcurrentHashMap<>();
 
@@ -30,13 +31,16 @@ public class ForecastCache {
 
     public ForecastDto getForecastById(Integer id) {
         ForecastDto forecast = singleForecastCache.get(id);
-        log.debug(forecast != null ? "Cache hit for forecast {}" :
-                "Cache miss for forecast {}", id);
+        if (forecast != null) {
+            log.debug("Cache hit for forecast {}", id);
+        } else {
+            log.debug("Cache miss for forecast {}", id);
+        }
         return forecast;
     }
 
     public List<ForecastDto> getForecastsByCityId(Integer cityId) {
-        String key = "city:" + cityId;
+        String key = cityName + cityId;
         return listForecastCache.get(key);
     }
 
@@ -51,21 +55,20 @@ public class ForecastCache {
     }
 
     public void cacheForecastsByCityId(Integer cityId, List<ForecastDto> forecasts) {
-        String key = "city:" + cityId;
+        String key = cityName + cityId;
         listForecastCache.put(key, forecasts);
         log.debug("Cached {} forecasts for city {}", forecasts.size(), cityId);
     }
 
-    public void cacheForecastsByNameAndDate(
-            String name, LocalDate date, List<ForecastDto> forecasts) {
+    public void cacheForecastsByNameAndDate(String name, LocalDate date, List<ForecastDto> forecasts) {
         String key = "name:" + name + ":date:" + date;
         listForecastCache.put(key, forecasts);
         log.debug("Cached {} forecasts for {} on {}", forecasts.size(), name, date);
     }
 
     public void evictForecastsByCity(Integer cityId) {
-        listForecastCache.keySet().removeIf(key -> key.startsWith("city:" + cityId)
-                || key.contains(":city:" + cityId + ":"));
+        listForecastCache.keySet().removeIf(key -> key.startsWith(cityName + cityId)
+                || key.contains(":" + cityName + cityId + ":"));
 
         singleForecastCache.values().removeIf(f -> f.getCityId().equals(cityId));
 
@@ -78,7 +81,7 @@ public class ForecastCache {
     }
 
     public void evictForecastsByCityAndDate(Integer cityId, LocalDate date) {
-        String keyPrefix = "city:" + cityId + ":date:" + date;
+        String keyPrefix = cityName + cityId + ":date:" + date;
         listForecastCache.keySet().removeIf(key -> key.startsWith(keyPrefix));
         log.debug("Evicted cache for city {} and date {}", cityId, date);
     }
