@@ -97,7 +97,7 @@ public class LogController {
                 logFiles = paths
                         .filter(this::isValidLogFile)
                         .map(this::extractLogId)
-                        .collect(Collectors.toList());
+                        .toList();
             }
             return ResponseEntity.ok(logFiles);
         } catch (IOException e) {
