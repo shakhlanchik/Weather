@@ -92,16 +92,28 @@ public class LogController {
     @GetMapping("/dynamic")
     public ResponseEntity<List<String>> getAvailableDynamicLogs() {
         try {
-            List<String> logFiles = Files.list(Paths.get(LOG_PATH))
-                .filter(path -> path.getFileName().toString().startsWith("log-")
-                && path.getFileName().toString().endsWith(".txt")).map(path ->
-                path.getFileName().toString().replace("log-", "")
-                .replace(".txt", "")).collect(Collectors.toList());
-
+            List<String> logFiles;
+            try (Stream<Path> paths = Files.list(Paths.get(LOG_PATH))) {
+                logFiles = paths
+                        .filter(this::isValidLogFile)
+                        .map(this::extractLogId)
+                        .collect(Collectors.toList());
+            }
             return ResponseEntity.ok(logFiles);
         } catch (IOException e) {
             return ResponseEntity.internalServerError().build();
         }
+    }
+
+    private boolean isValidLogFile(Path path) {
+        String filename = path.getFileName().toString();
+        return filename.startsWith("log-") && filename.endsWith(".txt");
+    }
+
+    private String extractLogId(Path path) {
+        return path.getFileName().toString()
+                .replace("log-", "")
+                .replace(".txt", "");
     }
 
     private List<String> filterLogsByDate(Path logPath, String date) throws IOException {
