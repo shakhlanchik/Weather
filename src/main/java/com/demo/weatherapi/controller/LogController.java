@@ -11,7 +11,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
@@ -120,7 +119,7 @@ public class LogController {
         try (Stream<String> lines = Files.lines(logPath)) {
             return lines
                     .filter(line -> line.startsWith(date))
-                    .collect(Collectors.toList());
+                    .toList();
         }
     }
 
