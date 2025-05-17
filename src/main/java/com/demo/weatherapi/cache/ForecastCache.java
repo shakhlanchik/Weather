@@ -58,14 +58,14 @@ public class ForecastCache {
     public void cacheForecastsByCityId(Integer cityId, List<ForecastDto> forecasts) {
         String key = cityName + cityId;
         listForecastCache.put(key, forecasts);
-        log.debug("Cached {} forecasts for city {}", forecasts.size(), cityId);
+        log.debug("Cached {} forecasts for specified city", forecasts.size());
     }
 
     public void cacheForecastsByNameAndDate(
             String name, LocalDate date, List<ForecastDto> forecasts) {
         String key = "name:" + name + dateStr + date;
         listForecastCache.put(key, forecasts);
-        log.debug("Cached {} forecasts for {} on {}", forecasts.size(), name, date);
+        log.debug("Cached {} forecasts for city on specified date", forecasts.size());
     }
 
     public void evictForecastsByCity(Integer cityId) {
@@ -85,6 +85,6 @@ public class ForecastCache {
     public void evictForecastsByCityAndDate(Integer cityId, LocalDate date) {
         String keyPrefix = cityName + cityId + dateStr + date;
         listForecastCache.keySet().removeIf(key -> key.startsWith(keyPrefix));
-        log.debug("Evicted cache for city {} and date {}", cityId, date);
+        log.debug("Evicted cache for specified city and date");
     }
 }
