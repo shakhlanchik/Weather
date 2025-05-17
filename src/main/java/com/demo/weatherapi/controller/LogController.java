@@ -5,6 +5,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.constraints.Pattern;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -12,8 +13,8 @@ import java.nio.file.Paths;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.stream.Stream;
+import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.Resource;
-import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -124,32 +125,35 @@ public class LogController {
     }
 
     @GetMapping("/main/download")
-    @Operation(summary = "Сформировать лог-файл по дате", description =
-            "Формирует отдельный лог-файл за указанную дату и возвращает его для скачивания.")
-    public ResponseEntity<Resource> downloadLogByDate(@RequestParam String date) {
+    @Operation(summary = "Сформировать лог-файл по дате", description
+            = "Формирует отдельный лог-файл за указанную дату и возвращает его для скачивания.")
+    public ResponseEntity<Resource> downloadLogByDate(
+            @RequestParam @Pattern(regexp = "^\\d{4}-\\d{2}-\\d{2}$") String date) {
         try {
-            Path originalLogPath = Paths.get(LOG_PATH + "app.log");
-            if (!Files.exists(originalLogPath)) {
+            Path logPath = Paths.get("logs", "app.log").normalize().toAbsolutePath();
+
+            if (!logPath.startsWith(Paths.get("logs").toAbsolutePath())) {
+                return ResponseEntity.badRequest().build();
+            }
+
+            if (!Files.exists(logPath)) {
                 return ResponseEntity.notFound().build();
             }
 
-            List<String> filteredLines = filterLogsByDate(originalLogPath, date);
+            List<String> filteredLines = filterLogsByDate(logPath, date);
             if (filteredLines.isEmpty()) {
                 return ResponseEntity.noContent().build();
             }
 
-            // Формируем временный файл
-            Path tempLogPath = Paths.get(LOG_PATH + "app-" + date + ".log");
-            Files.write(tempLogPath, filteredLines);
+            Path tempFile = Files.createTempFile("logs-" + date + "-", ".log");
+            Files.write(tempFile, filteredLines);
 
-            // Создаём ресурс для скачивания
-            Resource fileResource = new UrlResource(tempLogPath.toUri());
-
+            Resource resource = new InputStreamResource(Files.newInputStream(tempFile));
             return ResponseEntity.ok()
-                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename="
-                    + tempLogPath.getFileName()).contentType(MediaType.TEXT_PLAIN)
-                    .body(fileResource);
-
+                    .header(HttpHeaders.CONTENT_DISPOSITION,
+                            "attachment; filename=logs-" + date + ".log")
+                    .contentType(MediaType.TEXT_PLAIN)
+                    .body(resource);
         } catch (IOException e) {
             return ResponseEntity.internalServerError().build();
         }
