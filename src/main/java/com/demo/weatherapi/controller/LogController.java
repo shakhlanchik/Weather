@@ -2,63 +2,146 @@ package com.demo.weatherapi.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.stream.Collectors;
-import org.springframework.http.HttpStatus;
+import java.util.stream.Stream;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(
-        name = "Log Controller",
-        description = "Эндпоинты для получения логов приложения по дате"
-)
 @RestController
-@RequestMapping("/logs")
+@RequestMapping("/api/logs")
+@Tag(name = "LogController", description = "Контроллер для получения логов приложения")
 public class LogController {
 
-    private static final String LOGS_DIR = "logs";
+    private static final String LOG_PATH = "logs/";
 
-    @Operation(
-            summary = "Получить логи по дате", description =
-            "Возвращает содержимое лог-файла за указанную дату. Формат даты: yyyy-MM-dd. "
-                    + "Ищет файл вида app-yyyy-MM-dd.log в папке logs."
-    )
-    @GetMapping("/{date}")
-    public ResponseEntity<Object> getLogsByDate(
-            @Parameter(description = "Дата в формате yyyy-MM-dd", example = "2024-05-01")
-            @PathVariable String date
-    ) {
-        if (!date.matches("\\d{4}-\\d{2}-\\d{2}")) {
-            return ResponseEntity.badRequest().body("Invalid date format. Use yyyy-MM-dd.");
-        }
+    static {
+        DateTimeFormatter.ofPattern("yyyy-MM-dd");
+    }
 
-        Path logPath = Paths.get(LOGS_DIR, "app-" + date + ".log");
-
-        if (!Files.exists(logPath)) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Log file not found.");
-        }
-
-        try (BufferedReader reader = Files.newBufferedReader(logPath)) {
-            List<String> lines = reader.lines().toList();
-
-            if (lines.isEmpty()) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body("Log file is empty for date: " + date);
+    @Operation(summary = "Получить основные логи по дате", description
+            = "Возвращает строки из app.log, начинающиеся с указанной даты (формат yyyy-MM-dd).")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Логи успешно получены"),
+        @ApiResponse(responseCode = "404", description = "Файл логов не найден"),
+        @ApiResponse(responseCode = "500", description = "Ошибка сервера")
+    })
+    @GetMapping("/main")
+    public ResponseEntity<List<String>> getMainLogsByDate(
+            @Parameter(description = "Дата в формате yyyy-MM-dd") @RequestParam String date) {
+        try {
+            Path logPath = Paths.get(LOG_PATH + "app.log");
+            if (!Files.exists(logPath)) {
+                return ResponseEntity.notFound().build();
             }
 
-            return ResponseEntity.ok(lines);
+            List<String> filteredLogs = filterLogsByDate(logPath, date);
+            return ResponseEntity.ok(filteredLogs);
         } catch (IOException e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Error reading log file.");
+            return ResponseEntity.internalServerError().build();
         }
     }
+
+    @Operation(summary = "Получить динамический лог по ID и дате", description
+            = "Возвращает строки из файла log-{id}.txt, "
+            + "начинающиеся с указанной даты (формат yyyy-MM-dd).")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Логи успешно получены"),
+        @ApiResponse(responseCode = "404", description = "Файл логов не найден"),
+        @ApiResponse(responseCode = "500", description = "Ошибка сервера")
+    })
+    @GetMapping("/dynamic/{logId}")
+    public ResponseEntity<List<String>> getDynamicLogsByDate(
+            @Parameter(description = "Идентификатор лог-файла") @PathVariable String logId,
+            @Parameter(description = "Дата в формате yyyy-MM-dd") @RequestParam String date) {
+        try {
+            Path logPath = Paths.get(LOG_PATH + "log-" + logId + ".txt");
+            if (!Files.exists(logPath)) {
+                return ResponseEntity.notFound().build();
+            }
+
+            List<String> filteredLogs = filterLogsByDate(logPath, date);
+            return ResponseEntity.ok(filteredLogs);
+        } catch (IOException e) {
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    @Operation(summary = "Получить список доступных логов", description =
+            "Возвращает список всех лог-файлов в формате log-{id}.txt.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Список логов успешно получен"),
+        @ApiResponse(responseCode = "500", description = "Ошибка сервера")
+    })
+    @GetMapping("/dynamic")
+    public ResponseEntity<List<String>> getAvailableDynamicLogs() {
+        try {
+            List<String> logFiles = Files.list(Paths.get(LOG_PATH))
+                .filter(path -> path.getFileName().toString().startsWith("log-")
+                && path.getFileName().toString().endsWith(".txt")).map(path ->
+                path.getFileName().toString().replace("log-", "")
+                .replace(".txt", "")).collect(Collectors.toList());
+
+            return ResponseEntity.ok(logFiles);
+        } catch (IOException e) {
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    private List<String> filterLogsByDate(Path logPath, String date) throws IOException {
+        try (Stream<String> lines = Files.lines(logPath)) {
+            return lines
+                    .filter(line -> line.startsWith(date))
+                    .collect(Collectors.toList());
+        }
+    }
+
+    @GetMapping("/main/download")
+    @Operation(summary = "Сформировать лог-файл по дате", description =
+            "Формирует отдельный лог-файл за указанную дату и возвращает его для скачивания.")
+    public ResponseEntity<Resource> downloadLogByDate(@RequestParam String date) {
+        try {
+            Path originalLogPath = Paths.get(LOG_PATH + "app.log");
+            if (!Files.exists(originalLogPath)) {
+                return ResponseEntity.notFound().build();
+            }
+
+            List<String> filteredLines = filterLogsByDate(originalLogPath, date);
+            if (filteredLines.isEmpty()) {
+                return ResponseEntity.noContent().build();
+            }
+
+            // Формируем временный файл
+            Path tempLogPath = Paths.get(LOG_PATH + "app-" + date + ".log");
+            Files.write(tempLogPath, filteredLines);
+
+            // Создаём ресурс для скачивания
+            Resource fileResource = new UrlResource(tempLogPath.toUri());
+
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename="
+                    + tempLogPath.getFileName()).contentType(MediaType.TEXT_PLAIN)
+                    .body(fileResource);
+
+        } catch (IOException e) {
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
 }
