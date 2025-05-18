@@ -166,8 +166,8 @@ public class ForecastController {
             summary = "Массовое создание прогнозов",
             description = "Создаёт несколько прогнозов за один запрос",
             responses = {
-                    @ApiResponse(responseCode = "201", description = "Прогнозы успешно созданы"),
-                    @ApiResponse(responseCode = "400", description = "Ошибка валидации")
+                @ApiResponse(responseCode = "201", description = "Прогнозы успешно созданы"),
+                @ApiResponse(responseCode = "400", description = "Ошибка валидации")
             }
     )
     @PostMapping("/bulk")
