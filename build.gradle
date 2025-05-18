@@ -54,10 +54,14 @@ dependencies {
 tasks.named('test') {
     useJUnitPlatform()
     finalizedBy jacocoTestReport
+    testLogging {
+        events "passed", "skipped", "failed"
+    }
 }
 
 jacoco {
     toolVersion = "0.8.11"
+    reportsDirectory = layout.buildDirectory.dir('reports/jacoco')
 }
 
 jacocoTestReport {
@@ -66,25 +70,43 @@ jacocoTestReport {
         xml.required = true
         html.required = true
         csv.required = false
-        xml.outputLocation = file("${buildDir}/reports/jacoco/test/jacocoTestReport.xml")
+        xml.outputLocation = layout.buildDirectory.file("reports/jacoco/test/jacocoTestReport.xml")
+        html.outputLocation = layout.buildDirectory.dir("reports/jacoco/test/html")
     }
 
     afterEvaluate {
         classDirectories.setFrom(files(classDirectories.files.collect {
             fileTree(dir: it, exclude: [
-                    'com/demo/weatherapi/dto/**',
-                    'com/demo/weatherapi/model/**',
-                    'com/demo/weatherapi/exception/**',
-                    'com/demo/weatherapi/config/**',
+                    '**/dto/**',
+                    '**/model/**',
+                    '**/exception/**',
+                    '**/config/**',
+                    '**/*Application.class'
             ])
         }))
     }
 }
 
 jacocoTestCoverageVerification {
+    dependsOn jacocoTestReport
     violationRules {
         rule {
             limit {
+                minimum = 0.8
+            }
+        }
+        rule {
+            element = 'CLASS'
+            excludes = [
+                    'com.demo.weatherapi.dto.*',
+                    'com.demo.weatherapi.model.*',
+                    'com.demo.weatherapi.exception.*',
+                    'com.demo.weatherapi.config.*',
+                    'com.demo.weatherapi.WeatherApiApplication'
+            ]
+            limit {
+                counter = 'LINE'
+                value = 'COVEREDRATIO'
                 minimum = 0.8
             }
         }
@@ -98,8 +120,32 @@ sonarqube {
         property "sonar.projectKey", "shakhlanchik_Weather"
         property "sonar.organization", "shakhlanchik"
         property "sonar.host.url", "https://sonarcloud.io"
-        property "sonar.login", "94bfef4528da6df3a1100716209f89de4577735c"
+        property "sonar.login", System.getenv("SONAR_TOKEN")
+
+        property "sonar.qualitygate.wait", "true"
+        property "sonar.scm.provider", "git"
+
+        property "sonar.java.binaries", "${buildDir}/classes/java/main"
+        property "sonar.java.test.binaries", "${buildDir}/classes/java/test"
         property "sonar.coverage.jacoco.xmlReportPaths", "${buildDir}/reports/jacoco/test/jacocoTestReport.xml"
-        property "sonar.gradle.skipCompile", "true"
+        property "sonar.junit.reportPaths", "${buildDir}/test-results/test"
+
+        property "sonar.test.inclusions", "**/*Test.java"
+        property "sonar.exclusions", """
+            **/dto/**,
+            **/model/**,
+            **/exception/**,
+            **/config/**,
+            **/*Application.java,
+            **/resources/**
+        """
+
+        property "sonar.sourceEncoding", "UTF-8"
+        property "sonar.java.coveragePlugin", "jacoco"
     }
+}
+
+tasks.named('sonar').configure {
+    dependsOn jacocoTestReport
+    shouldRunAfter test
 }

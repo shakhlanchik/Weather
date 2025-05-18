@@ -21,6 +21,7 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
+          cache: 'gradle'
 
       - name: Cache Gradle dependencies
         uses: actions/cache@v3
@@ -35,18 +36,16 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Build and test with Gradle
-        env:
-          DB_USERNAME: ${{ secrets.DB_USERNAME }}
-          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-        run: ./gradlew build test jacocoTestReport --info
-
-      - name: SonarCloud Scan
-        uses: SonarSource/sonarcloud-github-action@v3
+      - name: Build and analyze
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        with:
-          args: >
-            -Dsonar.organization=shakhlanchik
-            -Dsonar.projectKey=shakhlanchik_Weather
-            -Dsonar.coverage.jacoco.xmlReportPaths=${{ github.workspace }}/build/reports/jacoco/test/jacocoTestReport.xml
+          DB_USERNAME: ${{ secrets.DB_USERNAME }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ./gradlew clean build jacocoTestReport sonar \
+            -Dsonar.qualitygate.wait=true \
+            -Dsonar.java.binaries=build/classes/java/main \
+            -Dsonar.java.test.binaries=build/classes/java/test \
+            -Dsonar.junit.reportPaths=build/test-results/test \
+            --info
