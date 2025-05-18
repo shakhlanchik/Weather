@@ -190,4 +190,16 @@ public class ForecastServiceImpl implements ForecastService {
 
         }
     }
+
+    @Override
+    @Transactional
+    public List<ForecastDto> createBulk(List<ForecastDto> forecastDtos) {
+        if (forecastDtos == null || forecastDtos.isEmpty()) {
+            throw new BadRequestException("Список прогнозов не может быть пустым");
+        }
+
+        return forecastDtos.stream()
+                .map(this::create)
+                .toList();
+    }
 }

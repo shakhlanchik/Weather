@@ -1,5 +1,6 @@
 package com.demo.weatherapi.controller;
 
+import com.demo.weatherapi.dto.ForecastBulkRequest;
 import com.demo.weatherapi.dto.ForecastDto;
 import com.demo.weatherapi.exception.ResourceNotFoundException;
 import com.demo.weatherapi.service.ForecastService;
@@ -159,5 +160,20 @@ public class ForecastController {
     public ResponseEntity<String> handleResourceNotFound(ResourceNotFoundException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body("{\"error\": \"" + ex.getMessage() + "\"}");
+    }
+
+    @Operation(
+            summary = "Массовое создание прогнозов",
+            description = "Создаёт несколько прогнозов за один запрос",
+            responses = {
+                    @ApiResponse(responseCode = "201", description = "Прогнозы успешно созданы"),
+                    @ApiResponse(responseCode = "400", description = "Ошибка валидации")
+            }
+    )
+    @PostMapping("/bulk")
+    public ResponseEntity<List<ForecastDto>> createBulk(
+            @Valid @RequestBody ForecastBulkRequest request) {
+        List<ForecastDto> createdForecasts = forecastService.createBulk(request.getForecasts());
+        return ResponseEntity.status(HttpStatus.CREATED).body(createdForecasts);
     }
 }

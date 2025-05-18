@@ -19,4 +19,6 @@ public interface ForecastService {
     List<ForecastDto> getForecastsByNameAndDate(String name, LocalDate date);
 
     List<ForecastDto> getForecastsByCityId(Integer cityId);
+
+    List<ForecastDto> createBulk(List<ForecastDto> forecastDtos);
 }
