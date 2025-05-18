@@ -3,7 +3,8 @@ plugins {
     id 'org.springframework.boot' version '3.4.3'
     id 'io.spring.dependency-management' version '1.1.7'
     id "io.swagger.core.v3.swagger-gradle-plugin" version "2.2.31"
-    id 'jacoco' // Добавляем плагин JaCoCo для анализа покрытия тестов
+    id 'jacoco'
+    id 'org.sonarqube' version '4.4.1.3373'
 }
 
 group = 'com.demo'
@@ -26,16 +27,13 @@ repositories {
 }
 
 dependencies {
-    // Основные зависимости Spring Boot
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-aop'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
 
-    // База данных
     runtimeOnly 'org.postgresql:postgresql:42.7.2'
 
-    // Lombok
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
     implementation 'org.projectlombok:lombok:1.18.30'
@@ -43,58 +41,65 @@ dependencies {
     testImplementation 'org.projectlombok:lombok:1.18.30'
     testAnnotationProcessor 'org.projectlombok:lombok:1.18.30'
 
-    // Документация API
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.6'
 
-    // DevTools
     developmentOnly 'org.springframework.boot:spring-boot-devtools'
 
-    // Тестирование (оставить только это!)
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.mockito:mockito-core:4.5.1'
     testImplementation 'org.mockito:mockito-junit-jupiter:4.5.1'
+    testImplementation 'com.h2database:h2:2.2.224'
 }
 
 tasks.named('test') {
     useJUnitPlatform()
-    finalizedBy jacocoTestReport // Генерируем отчет после выполнения тестов
+    finalizedBy jacocoTestReport
 }
 
 jacoco {
-    toolVersion = "0.8.7" // Версия JaCoCo
+    toolVersion = "0.8.11"
 }
 
 jacocoTestReport {
-    dependsOn test // Зависит от задачи test
+    dependsOn test
     reports {
-        xml.required = true // Для интеграции с CI/CD
-        html.required = true // Для локального просмотра
+        xml.required = true
+        html.required = true
         csv.required = false
+        xml.outputLocation = file("${buildDir}/reports/jacoco/test/jacocoTestReport.xml")
     }
 
-    // Исключаем из отчета классы, которые не нужно учитывать
     afterEvaluate {
         classDirectories.setFrom(files(classDirectories.files.collect {
             fileTree(dir: it, exclude: [
-                    'com/demo/weatherapi/dto/**', // Исключаем DTO
-                    'com/demo/weatherapi/model/**', // Исключаем сущности
-                    'com/demo/weatherapi/exception/**', // Исключаем исключения
-                    'com/demo/weatherapi/config/**', // Исключаем конфигурации
+                    'com/demo/weatherapi/dto/**',
+                    'com/demo/weatherapi/model/**',
+                    'com/demo/weatherapi/exception/**',
+                    'com/demo/weatherapi/config/**',
             ])
         }))
     }
 }
 
-// Проверяем покрытие кода (минимум 80%)
 jacocoTestCoverageVerification {
     violationRules {
         rule {
             limit {
-                minimum = 0.8 // 80% покрытия
+                minimum = 0.8
             }
         }
     }
 }
 
-// Запускаем проверку покрытия после генерации отчета
 check.dependsOn jacocoTestCoverageVerification
+
+sonarqube {
+    properties {
+        property "sonar.projectKey", "shakhlanchik_Weather"
+        property "sonar.organization", "shakhlanchik"
+        property "sonar.host.url", "https://sonarcloud.io"
+        property "sonar.login", "94bfef4528da6df3a1100716209f89de4577735c"
+        property "sonar.coverage.jacoco.xmlReportPaths", "${buildDir}/reports/jacoco/test/jacocoTestReport.xml"
+        property "sonar.gradle.skipCompile", "true"
+    }
+}
