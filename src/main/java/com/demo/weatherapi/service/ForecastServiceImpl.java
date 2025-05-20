@@ -12,6 +12,10 @@ import com.demo.weatherapi.repository.ForecastRepository;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -124,7 +128,6 @@ public class ForecastServiceImpl implements ForecastService {
         forecastCache.evictSingleForecast(forecastId);
         forecastCache.evictForecastsByCity(cityId);
         forecastCache.evictForecastsByCityAndDate(cityId, date);
-
     }
 
     @Override
@@ -191,15 +194,139 @@ public class ForecastServiceImpl implements ForecastService {
         }
     }
 
+    @Transactional
+    public List<ForecastDto> findByFilters(
+            String cityName, LocalDate date, Double minTemp, Double maxTemp) {
+        return forecastRepository.findAll().stream()
+                .filter(f -> cityName == null
+                        || (f.getCity() != null && cityName.equalsIgnoreCase(
+                                f.getCity().getName())))
+                .filter(f -> date == null || f.getDate().equals(date))
+                .filter(f -> minTemp == null
+                        || (f.getTemperatureMin() != null && f.getTemperatureMin() >= minTemp))
+                .filter(f -> maxTemp == null
+                        || (f.getTemperatureMax() != null && f.getTemperatureMax() <= maxTemp))
+                .map(forecastMapper::toDto)
+                .collect(Collectors.toList());
+    }
+
     @Override
     @Transactional
     public List<ForecastDto> createBulk(List<ForecastDto> forecastDtos) {
         if (forecastDtos == null || forecastDtos.isEmpty()) {
-            throw new BadRequestException("Список прогнозов не может быть пустым");
+            throw new BadRequestException("Список прогнозов не может быть null или пустым");
+        }
+
+        Set<Integer> cityIds = forecastDtos.stream()
+                .map(ForecastDto::getCityId)
+                .collect(Collectors.toSet());
+
+        Map<Integer, City> cities = cityRepository.findAllById(cityIds)
+                .stream()
+                .collect(Collectors.toMap(City::getId, Function.identity()));
+
+        Set<Integer> missingCityIds = cityIds.stream()
+                .filter(id -> !cities.containsKey(id))
+                .collect(Collectors.toSet());
+
+        if (!missingCityIds.isEmpty()) {
+            throw new BadRequestException("Города с ID не найдены: " + missingCityIds);
+        }
+
+        forecastDtos.forEach(dto -> {
+            City city = cities.get(dto.getCityId());
+            if (forecastRepository.existsByCityAndDate(city, dto.getDate())) {
+                throw new BadRequestException(
+                        String.format("Прогноз для города ID %d на дату %s уже существует",
+                                dto.getCityId(),
+                                dto.getDate().format(DateTimeFormatter.ISO_DATE))
+                );
+            }
+        });
+
+        List<Forecast> forecasts = forecastDtos.stream()
+                .map(dto -> {
+                    Forecast forecast = forecastMapper.toEntity(dto);
+                    forecast.setCity(cities.get(dto.getCityId()));
+                    return forecast;
+                })
+                .collect(Collectors.toList());
+
+        List<Forecast> savedForecasts = forecastRepository.saveAll(forecasts);
+
+        if (forecastCache != null) {
+            savedForecasts.forEach(forecast -> {
+                ForecastDto dto = forecastMapper.toDto(forecast);
+                forecastCache.cacheSingleForecast(dto);
+                forecastCache.evictForecastsByCity(forecast.getCity().getId());
+            });
+        }
+
+        return savedForecasts.stream()
+                .map(forecastMapper::toDto)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional
+    public List<ForecastDto> updateBulk(List<ForecastDto> forecastDtos) {
+        if (forecastDtos == null || forecastDtos.isEmpty()) {
+            throw new BadRequestException("Список прогнозов не может быть null или пустым");
+        }
+
+        List<Integer> ids = forecastDtos.stream().map(ForecastDto::getId)
+                .collect(Collectors.toList());
+        Map<Integer, Forecast> existingForecasts = forecastRepository.findAllById(ids)
+                .stream()
+                .collect(Collectors.toMap(Forecast::getId, Function.identity()));
+
+        if (existingForecasts.size() != forecastDtos.size()) {
+            throw new ResourceNotFoundException("Некоторые прогнозы не найдены");
         }
 
         return forecastDtos.stream()
-                .map(this::create)
-                .toList();
+                .map(dto -> {
+                    Forecast existing = existingForecasts.get(dto.getId());
+                    City city = cityRepository.findById(dto.getCityId())
+                            .orElseThrow(() -> new BadRequestException(
+                                    "Город с ID " + dto.getCityId() + " не найден"));
+
+                    forecastMapper.updateFromDto(dto, existing);
+                    existing.setCity(city);
+
+                    Forecast updated = forecastRepository.save(existing);
+                    ForecastDto updatedDto = forecastMapper.toDto(updated);
+
+                    forecastCache.cacheSingleForecast(updatedDto);
+                    forecastCache.evictForecastsByCity(city.getId());
+                    forecastCache.evictForecastsByCityAndDate(city.getId(), updatedDto.getDate());
+
+                    return updatedDto;
+                })
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional
+    public void deleteBulk(List<Integer> ids) {
+        if (ids == null || ids.isEmpty()) {
+            throw new BadRequestException("Список ID прогнозов не может быть null или пустым");
+        }
+
+        List<Forecast> forecasts = forecastRepository.findAllById(ids);
+        if (forecasts.size() != ids.size()) {
+            throw new ResourceNotFoundException("Некоторые прогнозы не найдены");
+        }
+
+        forecasts.forEach(forecast -> {
+            Integer cityId = forecast.getCity().getId();
+            final LocalDate date = forecast.getDate();
+
+            forecastRepository.delete(forecast);
+
+            forecastCache.evictSingleForecast(forecast.getId());
+            forecastCache.evictForecastsByCity(cityId);
+            forecastCache.evictForecastsByCityAndDate(cityId, date);
+        });
     }
 }

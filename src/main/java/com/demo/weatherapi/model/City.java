@@ -49,4 +49,13 @@ public class City {
     public String toString() {
         return "City{id=" + id + ", name='" + name + "'}";
     }
+
+    public City() {
+        // конструктор по умолчанию (нужен для JPA)
+    }
+
+    public City(Integer id, String name) {
+        this.id = id;
+        this.name = name;
+    }
 }

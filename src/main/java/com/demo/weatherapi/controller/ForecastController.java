@@ -11,8 +11,10 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.stream.Collectors;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -128,7 +130,7 @@ public class ForecastController {
     )
     @GetMapping("/filter")
     public ResponseEntity<List<ForecastDto>> getForecastsByNameAndDate(
-            @RequestParam String name,
+            @RequestParam @NotBlank String name,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         return ResponseEntity.ok(forecastService.getForecastsByNameAndDate(name, date));
     }
@@ -164,16 +166,78 @@ public class ForecastController {
 
     @Operation(
             summary = "Массовое создание прогнозов",
-            description = "Создаёт несколько прогнозов за один запрос",
+            description = "Создаёт несколько прогнозов за один запрос с использованием Stream API",
             responses = {
-                @ApiResponse(responseCode = "201", description = "Прогнозы успешно созданы"),
+                @ApiResponse(responseCode = "201", description = "Прогнозы успешно созданы",
+                    content = @Content(schema = @Schema(implementation = ForecastDto.class))),
                 @ApiResponse(responseCode = "400", description = "Ошибка валидации")
             }
     )
     @PostMapping("/bulk")
     public ResponseEntity<List<ForecastDto>> createBulk(
             @Valid @RequestBody ForecastBulkRequest request) {
-        List<ForecastDto> createdForecasts = forecastService.createBulk(request.getForecasts());
+        List<ForecastDto> createdForecasts = request.getForecasts().stream()
+                .map(forecastService::create)
+                .collect(Collectors.toList());
         return ResponseEntity.status(HttpStatus.CREATED).body(createdForecasts);
+    }
+
+    @Operation(
+            summary = "Массовое обновление прогнозов",
+            description =
+                    "Обновляет несколько прогнозов за один запрос с использованием Stream API",
+            responses = {
+                @ApiResponse(responseCode = "200", description = "Прогнозы успешно обновлены",
+                    content = @Content(schema = @Schema(implementation = ForecastDto.class))),
+                @ApiResponse(responseCode = "400", description = "Ошибка валидации"),
+                @ApiResponse(responseCode = "404", description =
+                        "Один или несколько прогнозов не найдены")
+            }
+    )
+    @PutMapping("/bulk")
+    public ResponseEntity<List<ForecastDto>> updateBulk(
+            @Valid @RequestBody List<ForecastDto> forecastDtos) {
+        List<ForecastDto> updatedForecasts = forecastDtos.stream()
+                .map(dto -> forecastService.update(dto, dto.getId()))
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(updatedForecasts);
+    }
+
+    @Operation(
+            summary = "Массовое удаление прогнозов",
+            description = "Удаляет несколько прогнозов по их ID",
+            responses = {
+                @ApiResponse(responseCode = "204", description = "Прогнозы успешно удалены"),
+                @ApiResponse(responseCode = "404", description =
+                        "Один или несколько прогнозов не найдены")
+            }
+    )
+    @DeleteMapping("/bulk")
+    public ResponseEntity<Void> deleteBulk(
+            @RequestBody List<Integer> ids) {
+        ids.forEach(forecastService::delete);
+        return ResponseEntity.noContent().build();
+    }
+
+    @Operation(
+            summary = "Фильтрация прогнозов с обработкой через Stream API",
+            description = "Возвращает отфильтрованные прогнозы с использованием Stream API",
+            responses = {
+                @ApiResponse(responseCode = "200", description =
+                    "Список отфильтрованных прогнозов",
+                    content = @Content(schema = @Schema(implementation = ForecastDto.class)))
+            }
+    )
+    @GetMapping("/filter/stream")
+    public ResponseEntity<List<ForecastDto>> filterForecasts(
+            @RequestParam(required = false) String cityName,
+            @RequestParam(required = false) LocalDate date,
+            @RequestParam(required = false) Double minTemp,
+            @RequestParam(required = false) Double maxTemp) {
+
+        List<ForecastDto> result = forecastService.findByFilters(cityName, date, minTemp, maxTemp);
+        return result.isEmpty()
+                ? ResponseEntity.noContent().build()
+                : ResponseEntity.ok(result);
     }
 }

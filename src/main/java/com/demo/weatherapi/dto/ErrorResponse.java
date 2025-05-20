@@ -23,7 +23,7 @@ public class ErrorResponse {
             example = "404",
             requiredMode = Schema.RequiredMode.REQUIRED
     )
-    private final int statusCode;
+    private String statusCode;
 
     @ArraySchema(
             schema = @Schema(implementation = String.class),
@@ -34,13 +34,13 @@ public class ErrorResponse {
     )
     private final List<String> validationErrors;
 
-    public ErrorResponse(String message, int statusCode) {
+    public ErrorResponse(String message, String statusCode) {
         this.message = message;
         this.statusCode = statusCode;
         this.validationErrors = null;
     }
 
-    public ErrorResponse(String message, int statusCode, List<String> validationErrors) {
+    public ErrorResponse(String message, List<String> validationErrors) {
         this.message = message;
         this.statusCode = statusCode;
         this.validationErrors = validationErrors;

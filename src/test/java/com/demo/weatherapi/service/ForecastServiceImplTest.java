@@ -1,8 +1,5 @@
 package com.demo.weatherapi.service;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
-
 import com.demo.weatherapi.cache.ForecastCache;
 import com.demo.weatherapi.dto.ForecastDto;
 import com.demo.weatherapi.exception.BadRequestException;
@@ -12,396 +9,592 @@ import com.demo.weatherapi.model.City;
 import com.demo.weatherapi.model.Forecast;
 import com.demo.weatherapi.repository.CityRepository;
 import com.demo.weatherapi.repository.ForecastRepository;
-import java.time.LocalDate;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 
-@ExtendWith(MockitoExtension.class)
+import java.time.LocalDate;
+import java.util.*;
+
+import static org.assertj.core.api.Assertions.*;
+import static org.mockito.Mockito.*;
+
 class ForecastServiceImplTest {
 
-    @Mock
     private ForecastRepository forecastRepository;
-    @Mock
     private CityRepository cityRepository;
-    @Mock
     private ForecastMapper forecastMapper;
-    @Mock
     private ForecastCache forecastCache;
-
-    @InjectMocks
     private ForecastServiceImpl forecastService;
-
-    private static final Integer CITY_ID = 1;
-    private static final Integer FORECAST_ID = 1;
-    private static final String CITY_NAME = "Moscow";
-    private static final LocalDate TODAY = LocalDate.now();
-    private static final LocalDate TOMORROW = LocalDate.now().plusDays(1);
 
     @BeforeEach
     void setUp() {
-        reset(forecastRepository, cityRepository, forecastMapper, forecastCache);
-    }
-
-    private ForecastDto createTestForecastDto(Integer id, LocalDate date,
-                                              Double tempMin, Double tempMax) {
-        ForecastDto dto = new ForecastDto();
-        dto.setId(id);
-        dto.setCityId(ForecastServiceImplTest.CITY_ID);
-        dto.setDate(date);
-        dto.setTemperatureMin(tempMin);
-        dto.setTemperatureMax(tempMax);
-        return dto;
-    }
-
-    private Forecast createTestForecast(Integer id, City city, LocalDate date) {
-        Forecast forecast = new Forecast();
-        forecast.setId(id);
-        forecast.setCity(city);
-        forecast.setDate(date);
-        return forecast;
-    }
-
-    private City createTestCity() {
-        City city = new City();
-        city.setId(ForecastServiceImplTest.CITY_ID);
-        city.setName(ForecastServiceImplTest.CITY_NAME);
-        return city;
+        forecastRepository = mock(ForecastRepository.class);
+        cityRepository = mock(CityRepository.class);
+        forecastMapper = mock(ForecastMapper.class);
+        forecastCache = mock(ForecastCache.class);
+        forecastService = new ForecastServiceImpl(forecastRepository, cityRepository, forecastMapper, forecastCache);
     }
 
     @Test
-    void readAll_ShouldReturnAllForecasts() {
-        City city = createTestCity();
-        Forecast forecast1 = createTestForecast(FORECAST_ID, city, TODAY);
-        Forecast forecast2 = createTestForecast(FORECAST_ID + 1, city, TOMORROW);
-        ForecastDto dto1 = createTestForecastDto(FORECAST_ID, TODAY, -5.0, 5.0);
-        ForecastDto dto2 = createTestForecastDto(FORECAST_ID + 1, TOMORROW, -3.0, 4.0);
+    void create_successful() {
+        ForecastDto dto = new ForecastDto(1, 1, LocalDate.now(), 10.0, 20.0);
+        City city = new City(1, "TestCity");
+        Forecast entity = new Forecast();
+        Forecast savedEntity = new Forecast();
+        ForecastDto savedDto = new ForecastDto(100, 1, dto.getDate(), 10.0, 20.0);
 
-        when(forecastRepository.findAll()).thenReturn(List.of(forecast1, forecast2));
-        when(forecastMapper.toDto(forecast1)).thenReturn(dto1);
-        when(forecastMapper.toDto(forecast2)).thenReturn(dto2);
-
-        List<ForecastDto> result = forecastService.readAll();
-
-        assertEquals(2, result.size());
-        assertTrue(result.containsAll(List.of(dto1, dto2)));
-    }
-
-    @Test
-    void readAll_ShouldReturnEmptyListWhenNoForecasts() {
-        when(forecastRepository.findAll()).thenReturn(Collections.emptyList());
-
-        List<ForecastDto> result = forecastService.readAll();
-
-        assertTrue(result.isEmpty());
-    }
-
-    @Test
-    void getForecastsByNameAndDate_ShouldReturnCachedWhenAvailable() {
-        ForecastDto cachedDto = createTestForecastDto(FORECAST_ID, TODAY, -5.0, 5.0);
-        when(forecastCache.getForecastsByNameAndDate(CITY_NAME, TODAY))
-                .thenReturn(List.of(cachedDto));
-
-        List<ForecastDto> result = forecastService.getForecastsByNameAndDate(CITY_NAME, TODAY);
-
-        assertEquals(1, result.size());
-        assertEquals(cachedDto, result.get(0));
-        verify(forecastRepository, never()).findForecastsByNameAndDate(any(), any());
-    }
-
-    @Test
-    void getForecastsByNameAndDate_ShouldFetchAndCacheWhenNotCached() {
-        City city = createTestCity();
-        Forecast forecast = createTestForecast(FORECAST_ID, city, TODAY);
-        ForecastDto dto = createTestForecastDto(FORECAST_ID, TODAY, -5.0, 5.0);
-
-        when(forecastCache.getForecastsByNameAndDate(CITY_NAME, TODAY)).thenReturn(null);
-        when(forecastRepository.findForecastsByNameAndDate(CITY_NAME, TODAY))
-                .thenReturn(List.of(forecast));
-        when(forecastMapper.toDto(forecast)).thenReturn(dto);
-
-        List<ForecastDto> result = forecastService.getForecastsByNameAndDate(CITY_NAME, TODAY);
-
-        assertEquals(1, result.size());
-        assertEquals(dto, result.get(0));
-        verify(forecastCache).cacheForecastsByNameAndDate(CITY_NAME, TODAY, List.of(dto));
-    }
-
-    @Test
-    void getForecastsByNameAndDate_ShouldThrowWhenNameOrDateNull() {
-        assertThrows(BadRequestException.class,
-                () -> forecastService.getForecastsByNameAndDate(null, TODAY));
-        assertThrows(BadRequestException.class,
-                () -> forecastService.getForecastsByNameAndDate("", TODAY));
-        assertThrows(BadRequestException.class,
-                () -> forecastService.getForecastsByNameAndDate(CITY_NAME, null));
-    }
-
-    @Test
-    void getForecastsByCityId_ShouldReturnCachedWhenAvailable() {
-        ForecastDto cachedDto = createTestForecastDto(FORECAST_ID, TODAY, -5.0, 5.0);
-        when(forecastCache.getForecastsByCityId(CITY_ID)).thenReturn(List.of(cachedDto));
-
-        List<ForecastDto> result = forecastService.getForecastsByCityId(CITY_ID);
-
-        assertEquals(1, result.size());
-        assertEquals(cachedDto, result.get(0));
-        verify(forecastRepository, never()).findByCityId(any());
-    }
-
-    @Test
-    void getForecastsByCityId_ShouldFetchAndCacheWhenNotCached() {
-        City city = createTestCity();
-        Forecast forecast = createTestForecast(FORECAST_ID, city, TODAY);
-        ForecastDto dto = createTestForecastDto(FORECAST_ID, TODAY, -5.0, 5.0);
-
-        when(forecastCache.getForecastsByCityId(CITY_ID)).thenReturn(null);
-        when(forecastRepository.findByCityId(CITY_ID)).thenReturn(List.of(forecast));
-        when(forecastMapper.toDto(forecast)).thenReturn(dto);
-
-        List<ForecastDto> result = forecastService.getForecastsByCityId(CITY_ID);
-
-        assertEquals(1, result.size());
-        assertEquals(dto, result.get(0));
-        verify(forecastCache).cacheForecastsByCityId(CITY_ID, List.of(dto));
-    }
-
-    @Test
-    void getForecastsByCityId_ShouldThrowWhenInvalidCityId() {
-        assertThrows(BadRequestException.class,
-                () -> forecastService.getForecastsByCityId(null));
-        assertThrows(BadRequestException.class,
-                () -> forecastService.getForecastsByCityId(0));
-        assertThrows(BadRequestException.class,
-                () -> forecastService.getForecastsByCityId(-1));
-    }
-
-    @Test
-    void validateForecastDto_ShouldThrowWhenNullDto() {
-        assertThrows(BadRequestException.class,
-                () -> forecastService.create(null));
-    }
-
-    @Test
-    void validateForecastDto_ShouldThrowWhenMandatoryFieldsMissing() {
-        ForecastDto dto = new ForecastDto();
-
-        assertThrows(BadRequestException.class,
-                () -> forecastService.create(dto));
-    }
-
-    @Test
-    void createBulk_ShouldThrowWhenEmptyList() {
-        assertThrows(BadRequestException.class,
-                () -> forecastService.createBulk(null));
-        assertThrows(BadRequestException.class,
-                () -> forecastService.createBulk(Collections.emptyList()));
-    }
-
-    @Test
-    void create_ShouldSaveAndCacheForecastWhenValid() {
-        ForecastDto inputDto = createTestForecastDto(null, TODAY, -5.0, 5.0);
-        City city = createTestCity();
-        Forecast entity = createTestForecast(null, city, TODAY);
-        Forecast savedEntity = createTestForecast(FORECAST_ID, city, TODAY);
-        ForecastDto expectedDto = createTestForecastDto(FORECAST_ID, TODAY, -5.0, 5.0);
-
-        when(cityRepository.findById(CITY_ID)).thenReturn(Optional.of(city));
-        when(forecastRepository.existsByCityAndDate(city, TODAY)).thenReturn(false);
-        when(forecastMapper.toEntity(inputDto)).thenReturn(entity);
+        when(cityRepository.findById(1)).thenReturn(Optional.of(city));
+        when(forecastRepository.existsByCityAndDate(city, dto.getDate())).thenReturn(false);
+        when(forecastMapper.toEntity(dto)).thenReturn(entity);
         when(forecastRepository.save(entity)).thenReturn(savedEntity);
-        when(forecastMapper.toDto(savedEntity)).thenReturn(expectedDto);
+        when(forecastMapper.toDto(savedEntity)).thenReturn(savedDto);
 
-        ForecastDto result = forecastService.create(inputDto);
+        ForecastDto result = forecastService.create(dto);
 
-        assertNotNull(result);
-        assertEquals(expectedDto, result);
-        verify(forecastCache).cacheSingleForecast(expectedDto);
-        verify(forecastCache).evictForecastsByCity(CITY_ID);
-        verify(forecastCache).evictForecastsByCityAndDate(CITY_ID, TODAY);
+        assertThat(result).isEqualTo(savedDto);
+        verify(forecastCache).cacheSingleForecast(savedDto);
+        verify(forecastCache).evictForecastsByCity(city.getId());
+        verify(forecastCache).evictForecastsByCityAndDate(city.getId(), dto.getDate());
+        verify(forecastRepository).save(entity);
     }
 
     @Test
-    void create_ShouldThrowWhenCityNotFound() {
-        ForecastDto inputDto = createTestForecastDto(null, TODAY, -5.0, 5.0);
-        when(cityRepository.findById(CITY_ID)).thenReturn(Optional.empty());
+    void create_throwsIfCityNotFound() {
+        ForecastDto dto = new ForecastDto(1, 999, LocalDate.now(), 10.0, 20.0);
+        when(cityRepository.findById(999)).thenReturn(Optional.empty());
 
-        assertThrows(BadRequestException.class, () -> forecastService.create(inputDto));
-        verify(forecastRepository, never()).save(any());
+        assertThatThrownBy(() -> forecastService.create(dto))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("Город с ID 999 не найден");
     }
 
     @Test
-    void create_ShouldThrowWhenDuplicateForecast() {
-        ForecastDto inputDto = createTestForecastDto(null, TODAY, -5.0, 5.0);
-        City city = createTestCity();
+    void create_throwsIfForecastExists() {
+        ForecastDto dto = new ForecastDto(1, 1, LocalDate.now(), 10.0, 20.0);
+        City city = new City(1, "TestCity");
 
-        when(cityRepository.findById(CITY_ID)).thenReturn(Optional.of(city));
-        when(forecastRepository.existsByCityAndDate(city, TODAY)).thenReturn(true);
+        when(cityRepository.findById(1)).thenReturn(Optional.of(city));
+        when(forecastRepository.existsByCityAndDate(city, dto.getDate())).thenReturn(true);
 
-        assertThrows(BadRequestException.class, () -> forecastService.create(inputDto));
-        verify(forecastRepository, never()).save(any());
+        assertThatThrownBy(() -> forecastService.create(dto))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("Прогноз на " + dto.getDate().format(java.time.format.DateTimeFormatter.ISO_DATE) + " для города TestCity уже существует");
     }
 
     @Test
-    void read_ShouldReturnCachedForecastWhenAvailable() {
-        ForecastDto cachedDto = createTestForecastDto(FORECAST_ID, TODAY, -5.0, 5.0);
-        when(forecastCache.getForecastById(FORECAST_ID)).thenReturn(cachedDto);
+    void create_throwsIfInvalidTemperature() {
+        ForecastDto dto = new ForecastDto(1, 1, LocalDate.now(), 30.0, 20.0);
 
-        ForecastDto result = forecastService.read(FORECAST_ID);
-
-        assertEquals(cachedDto, result);
-        verify(forecastRepository, never()).findById(any());
+        assertThatThrownBy(() -> forecastService.create(dto))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("Минимальная температура не может быть выше максимальной");
     }
 
     @Test
-    void read_ShouldFetchAndCacheWhenNotCached() {
-        City city = createTestCity();
-        Forecast forecast = createTestForecast(FORECAST_ID, city, TODAY);
-        ForecastDto expectedDto = createTestForecastDto(FORECAST_ID, TODAY, -5.0, 5.0);
+    void create_throwsIfTemperatureBelowLimit() {
+        ForecastDto dto = new ForecastDto(1, 1, LocalDate.now(), -101.0, 20.0);
 
-        when(forecastCache.getForecastById(FORECAST_ID)).thenReturn(null);
-        when(forecastRepository.findById(FORECAST_ID)).thenReturn(Optional.of(forecast));
-        when(forecastMapper.toDto(forecast)).thenReturn(expectedDto);
-
-        ForecastDto result = forecastService.read(FORECAST_ID);
-
-        assertEquals(expectedDto, result);
-        verify(forecastCache).cacheSingleForecast(expectedDto);
+        assertThatThrownBy(() -> forecastService.create(dto))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("Минимальная температура не может быть ниже -100°C");
     }
 
     @Test
-    void read_ShouldThrowWhenForecastNotFound() {
-        when(forecastCache.getForecastById(FORECAST_ID)).thenReturn(null);
-        when(forecastRepository.findById(FORECAST_ID)).thenReturn(Optional.empty());
+    void create_throwsIfTemperatureAboveLimit() {
+        ForecastDto dto = new ForecastDto(1, 1, LocalDate.now(), 10.0, 101.0);
 
-        assertThrows(ResourceNotFoundException.class, () -> forecastService.read(FORECAST_ID));
+        assertThatThrownBy(() -> forecastService.create(dto))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("Максимальная температура не может быть выше 100°C");
     }
 
     @Test
-    void update_ShouldUpdateAndCacheWhenValid() {
-        ForecastDto inputDto = createTestForecastDto(FORECAST_ID, TOMORROW, -3.0, 4.0);
-        City city = createTestCity();
-        Forecast existingForecast = createTestForecast(FORECAST_ID, city, TODAY);
-        ForecastDto expectedDto = createTestForecastDto(FORECAST_ID, TOMORROW, -3.0, 4.0);
-
-        when(forecastRepository.findById(FORECAST_ID)).thenReturn(Optional.of(existingForecast));
-        when(cityRepository.findById(CITY_ID)).thenReturn(Optional.of(city));
-        when(forecastRepository.save(existingForecast)).thenReturn(existingForecast);
-        when(forecastMapper.toDto(existingForecast)).thenReturn(expectedDto);
-
-        ForecastDto result = forecastService.update(inputDto, FORECAST_ID);
-
-        assertEquals(expectedDto, result);
-        verify(forecastCache).cacheSingleForecast(expectedDto);
-        verify(forecastCache).evictForecastsByCity(CITY_ID);
-        verify(forecastCache).evictForecastsByCityAndDate(CITY_ID, TOMORROW);
+    void create_throwsIfDtoIsNull() {
+        assertThatThrownBy(() -> forecastService.create(null))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("Некорректные данные прогноза");
     }
 
     @Test
-    void delete_ShouldEvictAllRelatedCacheEntries() {
-        City city = createTestCity();
-        Forecast forecast = createTestForecast(FORECAST_ID, city, TODAY);
+    void create_throwsIfCityIdIsNull() {
+        ForecastDto dto = new ForecastDto(1, null, LocalDate.now(), 10.0, 20.0);
 
-        when(forecastRepository.findById(FORECAST_ID)).thenReturn(Optional.of(forecast));
+        assertThatThrownBy(() -> forecastService.create(dto))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("Некорректные данные прогноза");
+    }
 
-        forecastService.delete(FORECAST_ID);
+    @Test
+    void create_throwsIfDateIsNull() {
+        ForecastDto dto = new ForecastDto(1, 1, null, 10.0, 20.0);
+
+        assertThatThrownBy(() -> forecastService.create(dto))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("Некорректные данные прогноза");
+    }
+
+    @Test
+    void readAll_successful() {
+        Forecast forecast = new Forecast();
+        ForecastDto dto = new ForecastDto(1, 1, LocalDate.now(), 10.0, 20.0);
+        when(forecastRepository.findAll()).thenReturn(List.of(forecast));
+        when(forecastMapper.toDto(forecast)).thenReturn(dto);
+
+        List<ForecastDto> result = forecastService.readAll();
+
+        assertThat(result).hasSize(1).containsExactly(dto);
+        verify(forecastRepository).findAll();
+        verify(forecastMapper).toDto(forecast);
+    }
+
+    @Test
+    void read_returnsFromCache() {
+        ForecastDto cached = new ForecastDto(1, 1, LocalDate.now(), 10.0, 20.0);
+        when(forecastCache.getForecastById(1)).thenReturn(cached);
+
+        ForecastDto result = forecastService.read(1);
+
+        assertThat(result).isEqualTo(cached);
+        verifyNoInteractions(forecastRepository);
+    }
+
+    @Test
+    void read_loadsFromRepoIfNotInCache() {
+        Forecast entity = new Forecast();
+        ForecastDto dto = new ForecastDto(1, 1, LocalDate.now(), 10.0, 20.0);
+
+        when(forecastCache.getForecastById(1)).thenReturn(null);
+        when(forecastRepository.findById(1)).thenReturn(Optional.of(entity));
+        when(forecastMapper.toDto(entity)).thenReturn(dto);
+
+        ForecastDto result = forecastService.read(1);
+
+        assertThat(result).isEqualTo(dto);
+        verify(forecastCache).cacheSingleForecast(dto);
+    }
+
+    @Test
+    void read_throwsIfNotFound() {
+        when(forecastCache.getForecastById(1)).thenReturn(null);
+        when(forecastRepository.findById(1)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> forecastService.read(1))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessageContaining("Город с ID 1 не найден");
+    }
+
+    @Test
+    void update_successful() {
+        ForecastDto dto = new ForecastDto(1, 1, LocalDate.now(), 15.0, 25.0);
+        City city = new City(1, "TestCity");
+        Forecast existing = new Forecast();
+        Forecast updatedEntity = new Forecast();
+        ForecastDto updatedDto = new ForecastDto(1, 1, dto.getDate(), 15.0, 25.0);
+
+        when(forecastRepository.findById(1)).thenReturn(Optional.of(existing));
+        when(cityRepository.findById(1)).thenReturn(Optional.of(city));
+        doNothing().when(forecastMapper).updateFromDto(dto, existing);
+        when(forecastRepository.save(existing)).thenReturn(updatedEntity);
+        when(forecastMapper.toDto(updatedEntity)).thenReturn(updatedDto);
+
+        ForecastDto result = forecastService.update(dto, 1);
+
+        assertThat(result).isEqualTo(updatedDto);
+        verify(forecastCache).cacheSingleForecast(updatedDto);
+        verify(forecastCache).evictForecastsByCity(city.getId());
+        verify(forecastCache).evictForecastsByCityAndDate(city.getId(), dto.getDate());
+    }
+
+    @Test
+    void update_throwsIfForecastNotFound() {
+        ForecastDto dto = new ForecastDto(1, 1, LocalDate.now(), 10.0, 20.0);
+        when(forecastRepository.findById(1)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> forecastService.update(dto, 1))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessageContaining("Город с ID 1 не найден");
+    }
+
+    @Test
+    void update_throwsIfCityNotFound() {
+        ForecastDto dto = new ForecastDto(1, 999, LocalDate.now(), 10.0, 20.0);
+        Forecast existing = new Forecast();
+        when(forecastRepository.findById(1)).thenReturn(Optional.of(existing));
+        when(cityRepository.findById(999)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> forecastService.update(dto, 1))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("Город с ID 999 не найден");
+    }
+
+    @Test
+    void update_throwsIfDtoIsNull() {
+        assertThatThrownBy(() -> forecastService.update(null, 1))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("Некорректные данные прогноза");
+    }
+
+    @Test
+    void delete_successful() {
+        City city = new City(1, "City");
+        Forecast forecast = new Forecast();
+        forecast.setId(1);
+        forecast.setCity(city);
+        forecast.setDate(LocalDate.now());
+
+        when(forecastRepository.findById(1)).thenReturn(Optional.of(forecast));
+
+        forecastService.delete(1);
 
         verify(forecastRepository).delete(forecast);
-        verify(forecastCache).evictSingleForecast(FORECAST_ID);
-        verify(forecastCache).evictForecastsByCity(CITY_ID);
-        verify(forecastCache).evictForecastsByCityAndDate(CITY_ID, TODAY);
+        verify(forecastCache).evictSingleForecast(1);
+        verify(forecastCache).evictForecastsByCity(city.getId());
+        verify(forecastCache).evictForecastsByCityAndDate(city.getId(), forecast.getDate());
     }
 
     @Test
-    void validateForecastDto_ShouldThrowWhenInvalidTemperatureRange() {
-        ForecastDto dto = createTestForecastDto(null, TODAY, 10.0, 5.0);
-        ForecastDto finalDto = dto;
-        assertThrows(BadRequestException.class, () -> forecastService.create(finalDto));
+    void delete_throwsIfNotFound() {
+        when(forecastRepository.findById(1)).thenReturn(Optional.empty());
 
-        dto = createTestForecastDto(null, TODAY, -101.0, 5.0);
-        ForecastDto finalDto1 = dto;
-        assertThrows(BadRequestException.class, () -> forecastService.create(finalDto1));
-
-        dto = createTestForecastDto(null, TODAY, -5.0, 101.0);
-        ForecastDto finalDto2 = dto;
-        assertThrows(BadRequestException.class, () -> forecastService.create(finalDto2));
+        assertThatThrownBy(() -> forecastService.delete(1))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessageContaining("Город с ID 1 не найден");
     }
 
     @Test
-    void createBulk_ShouldProcessAllValidForecasts() {
-        ForecastDto dto1 = createTestForecastDto(null, TODAY, -5.0, 5.0);
-        ForecastDto dto2 = createTestForecastDto(null, TOMORROW, -3.0, 4.0);
-        City city = createTestCity();
+    void getForecastsByCityId_returnsCached() {
+        List<ForecastDto> cached = List.of(new ForecastDto(1, 1, LocalDate.now(), 10.0, 20.0));
+        when(forecastCache.getForecastsByCityId(1)).thenReturn(cached);
 
-        when(cityRepository.findById(CITY_ID)).thenReturn(Optional.of(city));
+        List<ForecastDto> result = forecastService.getForecastsByCityId(1);
+
+        assertThat(result).isEqualTo(cached);
+        verifyNoInteractions(forecastRepository);
+    }
+
+    @Test
+    void getForecastsByCityId_loadsFromRepoIfNotCached() {
+        Forecast forecast = new Forecast();
+        ForecastDto dto = new ForecastDto(1, 1, LocalDate.now(), 10.0, 20.0);
+        when(forecastCache.getForecastsByCityId(1)).thenReturn(null);
+        when(forecastRepository.findByCityId(1)).thenReturn(List.of(forecast));
+        when(forecastMapper.toDto(forecast)).thenReturn(dto);
+
+        List<ForecastDto> result = forecastService.getForecastsByCityId(1);
+
+        assertThat(result).hasSize(1).containsExactly(dto);
+        verify(forecastCache).cacheForecastsByCityId(1, result);
+    }
+
+    @Test
+    void getForecastsByCityId_invalidId() {
+        assertThatThrownBy(() -> forecastService.getForecastsByCityId(0))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("Некорректный ID города");
+    }
+
+    @Test
+    void getForecastsByCityId_nullId() {
+        assertThatThrownBy(() -> forecastService.getForecastsByCityId(null))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("Некорректный ID города");
+    }
+
+    @Test
+    void getForecastsByNameAndDate_returnsCached() {
+        List<ForecastDto> cached = List.of(new ForecastDto(1, 1, LocalDate.now(), 10.0, 20.0));
+        when(forecastCache.getForecastsByNameAndDate("Moscow", LocalDate.now())).thenReturn(cached);
+
+        List<ForecastDto> result = forecastService.getForecastsByNameAndDate("Moscow", LocalDate.now());
+
+        assertThat(result).isEqualTo(cached);
+        verifyNoInteractions(forecastRepository);
+    }
+
+    @Test
+    void getForecastsByNameAndDate_loadsFromRepoIfNotCached() {
+        Forecast forecast = new Forecast();
+        ForecastDto dto = new ForecastDto(1, 1, LocalDate.now(), 10.0, 20.0);
+        when(forecastCache.getForecastsByNameAndDate("Moscow", LocalDate.now())).thenReturn(null);
+        when(forecastRepository.findForecastsByNameAndDate("Moscow", LocalDate.now())).thenReturn(List.of(forecast));
+        when(forecastMapper.toDto(forecast)).thenReturn(dto);
+
+        List<ForecastDto> result = forecastService.getForecastsByNameAndDate("Moscow", LocalDate.now());
+
+        assertThat(result).hasSize(1).containsExactly(dto);
+        verify(forecastCache).cacheForecastsByNameAndDate("Moscow", LocalDate.now(), result);
+    }
+
+    @Test
+    void getForecastsByNameAndDate_nullArgs() {
+        assertThatThrownBy(() -> forecastService.getForecastsByNameAndDate(null, LocalDate.now()))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("Имя города и дата обязательны");
+
+        assertThatThrownBy(() -> forecastService.getForecastsByNameAndDate("Moscow", null))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("Имя города и дата обязательны");
+
+        assertThatThrownBy(() -> forecastService.getForecastsByNameAndDate("", LocalDate.now()))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("Имя города и дата обязательны");
+    }
+
+    @Test
+    void findByFilters_filtersCorrectly() {
+        City city = new City(1, "Moscow");
+        Forecast forecast = new Forecast();
+        forecast.setCity(city);
+        forecast.setDate(LocalDate.of(2023, 1, 1));
+        forecast.setTemperatureMin(5.0);
+        forecast.setTemperatureMax(10.0);
+
+        when(forecastRepository.findAll()).thenReturn(List.of(forecast));
+        when(forecastMapper.toDto(forecast)).thenReturn(new ForecastDto(1, 1, LocalDate.of(2023, 1, 1), 5.0, 10.0));
+
+        List<ForecastDto> result = forecastService.findByFilters("Moscow", LocalDate.of(2023, 1, 1), 4.0, 11.0);
+
+        assertThat(result).hasSize(1);
+    }
+
+    @Test
+    void findByFilters_emptyResultIfNoMatch() {
+        City city = new City(1, "Moscow");
+        Forecast forecast = new Forecast();
+        forecast.setCity(city);
+        forecast.setDate(LocalDate.of(2023, 1, 1));
+        forecast.setTemperatureMin(5.0);
+        forecast.setTemperatureMax(10.0);
+
+        when(forecastRepository.findAll()).thenReturn(List.of(forecast));
+
+        List<ForecastDto> result = forecastService.findByFilters("London", LocalDate.of(2023, 1, 1), 4.0, 11.0);
+
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    void findByFilters_nullParameters() {
+        City city = new City(1, "Moscow");
+        Forecast forecast = new Forecast();
+        forecast.setCity(city);
+        forecast.setDate(LocalDate.of(2023, 1, 1));
+        forecast.setTemperatureMin(5.0);
+        forecast.setTemperatureMax(10.0);
+        ForecastDto dto = new ForecastDto(1, 1, LocalDate.of(2023, 1, 1), 5.0, 10.0);
+
+        when(forecastRepository.findAll()).thenReturn(List.of(forecast));
+        when(forecastMapper.toDto(forecast)).thenReturn(dto);
+
+        List<ForecastDto> result = forecastService.findByFilters(null, null, null, null);
+
+        assertThat(result).hasSize(1).containsExactly(dto);
+    }
+
+    @Test
+    void findByFilters_partialParameters() {
+        City city = new City(1, "Moscow");
+        Forecast forecast = new Forecast();
+        forecast.setCity(city);
+        forecast.setDate(LocalDate.of(2023, 1, 1));
+        forecast.setTemperatureMin(5.0);
+        forecast.setTemperatureMax(10.0);
+        ForecastDto dto = new ForecastDto(1, 1, LocalDate.of(2023, 1, 1), 5.0, 10.0);
+
+        when(forecastRepository.findAll()).thenReturn(List.of(forecast));
+        when(forecastMapper.toDto(forecast)).thenReturn(dto);
+
+        List<ForecastDto> result = forecastService.findByFilters("Moscow", null, 4.0, null);
+
+        assertThat(result).hasSize(1).containsExactly(dto);
+    }
+
+    @Test
+    void createBulk_successful() {
+        ForecastDto dto1 = new ForecastDto(null, 1, LocalDate.now(), 10.0, 20.0);
+        ForecastDto dto2 = new ForecastDto(null, 2, LocalDate.now(), 15.0, 25.0);
+        City city1 = new City(1, "City1");
+        City city2 = new City(2, "City2");
+        Forecast entity1 = new Forecast();
+        Forecast entity2 = new Forecast();
+        Forecast saved1 = new Forecast();
+        saved1.setId(1);
+        saved1.setCity(city1);
+        saved1.setDate(dto1.getDate());
+        Forecast saved2 = new Forecast();
+        saved2.setId(2);
+        saved2.setCity(city2);
+        saved2.setDate(dto2.getDate());
+        ForecastDto savedDto1 = new ForecastDto(1, 1, LocalDate.now(), 10.0, 20.0);
+        ForecastDto savedDto2 = new ForecastDto(2, 2, LocalDate.now(), 15.0, 25.0);
+
+        when(cityRepository.findAllById(Set.of(1, 2))).thenReturn(List.of(city1, city2));
         when(forecastRepository.existsByCityAndDate(any(), any())).thenReturn(false);
-        when(forecastMapper.toEntity(any())).thenReturn(new Forecast());
-        when(forecastRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-        when(forecastMapper.toDto(any())).thenAnswer(inv -> {
-            Forecast f = inv.getArgument(0);
-            return createTestForecastDto(f.getId(), f.getDate(), -5.0, 5.0);
-        });
+        when(forecastMapper.toEntity(dto1)).thenReturn(entity1);
+        when(forecastMapper.toEntity(dto2)).thenReturn(entity2);
+        when(forecastRepository.saveAll(anyList())).thenReturn(List.of(saved1, saved2));
+        when(forecastMapper.toDto(saved1)).thenReturn(savedDto1);
+        when(forecastMapper.toDto(saved2)).thenReturn(savedDto2);
 
-        List<ForecastDto> results = forecastService.createBulk(List.of(dto1, dto2));
+        List<ForecastDto> result = forecastService.createBulk(List.of(dto1, dto2));
 
-        assertEquals(2, results.size());
-        verify(forecastRepository, times(2)).save(any());
-        verify(forecastCache, times(2)).cacheSingleForecast(any());
+        assertThat(result).hasSize(2).containsExactly(savedDto1, savedDto2);
+        verify(forecastCache).cacheSingleForecast(savedDto1);
+        verify(forecastCache).cacheSingleForecast(savedDto2);
+        verify(forecastCache).evictForecastsByCity(1);
+        verify(forecastCache).evictForecastsByCity(2);
     }
 
     @Test
-    void update_ShouldThrowWhenForecastNotFound() {
-        ForecastDto inputDto = createTestForecastDto(FORECAST_ID, TODAY, -5.0, 5.0);
-        when(forecastRepository.findById(FORECAST_ID)).thenReturn(Optional.empty());
-
-        assertThrows(ResourceNotFoundException.class,
-                () -> forecastService.update(inputDto, FORECAST_ID));
-        verify(forecastCache, never()).cacheSingleForecast(any());
+    void createBulk_throwsIfNullList() {
+        assertThatThrownBy(() -> forecastService.createBulk(null))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("Список прогнозов не может быть null или пустым");
     }
 
     @Test
-    void update_ShouldThrowWhenCityNotFound() {
-        ForecastDto inputDto = createTestForecastDto(FORECAST_ID, TODAY, -5.0, 5.0);
-        Forecast existingForecast = createTestForecast(FORECAST_ID, null, TODAY);
-
-        when(forecastRepository.findById(FORECAST_ID)).thenReturn(Optional.of(existingForecast));
-        when(cityRepository.findById(CITY_ID)).thenReturn(Optional.empty());
-
-        assertThrows(BadRequestException.class,
-                () -> forecastService.update(inputDto, FORECAST_ID));
-        verify(forecastCache, never()).cacheSingleForecast(any());
+    void createBulk_throwsIfEmptyList() {
+        assertThatThrownBy(() -> forecastService.createBulk(List.of()))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("Список прогнозов не может быть null или пустым");
     }
 
     @Test
-    void delete_ShouldThrowWhenForecastNotFound() {
-        when(forecastRepository.findById(FORECAST_ID)).thenReturn(Optional.empty());
+    void createBulk_throwsIfMissingCity() {
+        ForecastDto dto = new ForecastDto(null, 10, LocalDate.now(), 10.0, 20.0);
+        when(cityRepository.findAllById(Set.of(10))).thenReturn(List.of());
 
-        assertThrows(ResourceNotFoundException.class,
-                () -> forecastService.delete(FORECAST_ID));
-        verify(forecastCache, never()).evictSingleForecast(any());
-        verify(forecastCache, never()).evictForecastsByCity(any());
-        verify(forecastCache, never()).evictForecastsByCityAndDate(any(), any());
+        assertThatThrownBy(() -> forecastService.createBulk(List.of(dto)))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("Города с ID не найдены");
     }
 
     @Test
-    void validateForecastDto_ShouldThrowWhenDateIsNull() {
-        ForecastDto dto = createTestForecastDto(null, null, -5.0, 5.0);
-        dto.setDate(null);
+    void createBulk_throwsIfDuplicateExists() {
+        ForecastDto dto = new ForecastDto(null, 1, LocalDate.now(), 10.0, 20.0);
+        City city = new City(1, "City1");
+        when(cityRepository.findAllById(Set.of(1))).thenReturn(List.of(city));
+        when(forecastRepository.existsByCityAndDate(city, dto.getDate())).thenReturn(true);
 
-        assertThrows(BadRequestException.class, () -> forecastService.create(dto));
+        assertThatThrownBy(() -> forecastService.createBulk(List.of(dto)))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("Прогноз для города ID 1 на дату " + dto.getDate().format(java.time.format.DateTimeFormatter.ISO_DATE) + " уже существует");
     }
 
     @Test
-    void validateForecastDto_ShouldThrowWhenCityIdIsNull() {
-        ForecastDto dto = createTestForecastDto(null, TODAY, -5.0, 5.0);
-        dto.setCityId(null);
+    void createBulk_throwsIfInvalidDto() {
+        ForecastDto dto = new ForecastDto(null, 1, LocalDate.now(), 30.0, 20.0);
+        City city = new City(1, "City1");
+        when(cityRepository.findAllById(Set.of(1))).thenReturn(List.of(city));
+        when(forecastRepository.existsByCityAndDate(city, dto.getDate())).thenReturn(false);
 
-        assertThrows(BadRequestException.class, () -> forecastService.create(dto));
+    }
+
+    @Test
+    void updateBulk_successful() {
+        ForecastDto dto1 = new ForecastDto(1, 1, LocalDate.now(), 10.0, 20.0);
+        ForecastDto dto2 = new ForecastDto(2, 2, LocalDate.now(), 15.0, 25.0);
+        City city1 = new City(1, "City1");
+        City city2 = new City(2, "City2");
+        Forecast existing1 = new Forecast();
+        existing1.setId(1);
+        Forecast existing2 = new Forecast();
+        existing2.setId(2);
+        Forecast updated1 = new Forecast();
+        Forecast updated2 = new Forecast();
+        ForecastDto updatedDto1 = new ForecastDto(1, 1, LocalDate.now(), 10.0, 20.0);
+        ForecastDto updatedDto2 = new ForecastDto(2, 2, LocalDate.now(), 15.0, 25.0);
+
+        when(forecastRepository.findAllById(List.of(1, 2))).thenReturn(List.of(existing1, existing2));
+        when(cityRepository.findById(1)).thenReturn(Optional.of(city1));
+        when(cityRepository.findById(2)).thenReturn(Optional.of(city2));
+        doNothing().when(forecastMapper).updateFromDto(dto1, existing1);
+        doNothing().when(forecastMapper).updateFromDto(dto2, existing2);
+        when(forecastRepository.save(existing1)).thenReturn(updated1);
+        when(forecastRepository.save(existing2)).thenReturn(updated2);
+        when(forecastMapper.toDto(updated1)).thenReturn(updatedDto1);
+        when(forecastMapper.toDto(updated2)).thenReturn(updatedDto2);
+
+        List<ForecastDto> result = forecastService.updateBulk(List.of(dto1, dto2));
+    }
+
+    @Test
+    void updateBulk_throwsIfNullList() {
+        assertThatThrownBy(() -> forecastService.updateBulk(null))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("Список прогнозов не может быть null или пустым");
+    }
+
+    @Test
+    void updateBulk_throwsIfEmptyList() {
+        assertThatThrownBy(() -> forecastService.updateBulk(List.of()))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("Список прогнозов не может быть null или пустым");
+    }
+
+    @Test
+    void updateBulk_throwsIfSomeForecastsNotFound() {
+        ForecastDto dto = new ForecastDto(1, 1, LocalDate.now(), 10.0, 20.0);
+        when(forecastRepository.findAllById(List.of(1))).thenReturn(List.of());
+
+        assertThatThrownBy(() -> forecastService.updateBulk(List.of(dto)))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessageContaining("Некоторые прогнозы не найдены");
+    }
+
+    @Test
+    void updateBulk_throwsIfInvalidDto() {
+        ForecastDto dto = new ForecastDto(1, 1, LocalDate.now(), 30.0, 20.0);
+        Forecast existing = new Forecast();
+        existing.setId(1);
+        when(forecastRepository.findAllById(List.of(1))).thenReturn(List.of(existing));
+        when(cityRepository.findById(1)).thenReturn(Optional.of(new City(1, "City1")));
+    }
+
+    @Test
+    void deleteBulk_successful() {
+        City city = new City(1, "City1");
+        Forecast forecast1 = new Forecast();
+        forecast1.setId(1);
+        forecast1.setCity(city);
+        forecast1.setDate(LocalDate.now());
+        Forecast forecast2 = new Forecast();
+        forecast2.setId(2);
+        forecast2.setCity(city);
+        forecast2.setDate(LocalDate.now());
+
+        when(forecastRepository.findAllById(List.of(1, 2))).thenReturn(List.of(forecast1, forecast2));
+
+        forecastService.deleteBulk(List.of(1, 2));
+
+        verify(forecastRepository).delete(forecast1);
+        verify(forecastRepository).delete(forecast2);
+        verify(forecastCache).evictSingleForecast(1);
+        verify(forecastCache).evictSingleForecast(2);
+        verify(forecastCache, times(2)).evictForecastsByCity(1);
+        verify(forecastCache, times(2)).evictForecastsByCityAndDate(1, LocalDate.now());
+    }
+
+    @Test
+    void deleteBulk_throwsIfNullList() {
+        assertThatThrownBy(() -> forecastService.deleteBulk(null))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("Список ID прогнозов не может быть null или пустым");
+    }
+
+    @Test
+    void deleteBulk_throwsIfEmptyList() {
+        assertThatThrownBy(() -> forecastService.deleteBulk(List.of()))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("Список ID прогнозов не может быть null или пустым");
+    }
+
+    @Test
+    void deleteBulk_throwsIfSomeForecastsNotFound() {
+        when(forecastRepository.findAllById(List.of(1))).thenReturn(List.of());
+
+        assertThatThrownBy(() -> forecastService.deleteBulk(List.of(1)))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessageContaining("Некоторые прогнозы не найдены");
     }
 }

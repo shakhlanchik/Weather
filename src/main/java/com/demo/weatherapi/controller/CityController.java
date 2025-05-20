@@ -82,7 +82,7 @@ public class CityController {
             @io.swagger.v3.oas.annotations.parameters.RequestBody(
                     description = "Обновленные данные города", required = true)
             @RequestBody CityDto cityDto) {
-        cityDto.setId(id); // Убедимся, что ID установлен
+        cityDto.setId(id);
         CityDto updatedCity = cityService.update(cityDto);
         if (updatedCity != null) {
             return ResponseEntity.ok(updatedCity);

@@ -48,7 +48,6 @@ public class CityMapper {
         city.setId(dto.getId());
         city.setName(dto.getName());
 
-        // forecasts обрабатываются отдельно при необходимости
         return city;
     }
 }

@@ -20,5 +20,12 @@ public interface ForecastService {
 
     List<ForecastDto> getForecastsByCityId(Integer cityId);
 
-    List<ForecastDto> createBulk(List<ForecastDto> forecastDtos);
+    List<ForecastDto> findByFilters(
+            String cityName, LocalDate date, Double minTemp, Double maxTemp);
+
+    List<ForecastDto> createBulk(List<ForecastDto> forecasts);
+
+    List<ForecastDto> updateBulk(List<ForecastDto> forecasts);
+
+    void deleteBulk(List<Integer> ids);
 }

@@ -19,7 +19,6 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -56,64 +55,6 @@ public class LogController {
         } catch (IOException e) {
             return ResponseEntity.internalServerError().build();
         }
-    }
-
-    @Operation(summary = "Получить динамический лог по ID и дате", description
-            = "Возвращает строки из файла log-{id}.txt, "
-            + "начинающиеся с указанной даты (формат yyyy-MM-dd).")
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Логи успешно получены"),
-        @ApiResponse(responseCode = "404", description = "Файл логов не найден"),
-        @ApiResponse(responseCode = "500", description = "Ошибка сервера")
-    })
-    @GetMapping("/dynamic/{logId}")
-    public ResponseEntity<List<String>> getDynamicLogsByDate(
-            @Parameter(description = "Идентификатор лог-файла") @PathVariable String logId,
-            @Parameter(description = "Дата в формате yyyy-MM-dd") @RequestParam String date) {
-        try {
-            Path logPath = Paths.get(LOG_PATH + "log-" + logId + ".txt");
-            if (!Files.exists(logPath)) {
-                return ResponseEntity.notFound().build();
-            }
-
-            List<String> filteredLogs = filterLogsByDate(logPath, date);
-            return ResponseEntity.ok(filteredLogs);
-        } catch (IOException e) {
-            return ResponseEntity.internalServerError().build();
-        }
-    }
-
-    @Operation(summary = "Получить список доступных логов", description =
-            "Возвращает список всех лог-файлов в формате log-{id}.txt.")
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Список логов успешно получен"),
-        @ApiResponse(responseCode = "500", description = "Ошибка сервера")
-    })
-    @GetMapping("/dynamic")
-    public ResponseEntity<List<String>> getAvailableDynamicLogs() {
-        try {
-            List<String> logFiles;
-            try (Stream<Path> paths = Files.list(Paths.get(LOG_PATH))) {
-                logFiles = paths
-                        .filter(this::isValidLogFile)
-                        .map(this::extractLogId)
-                        .toList();
-            }
-            return ResponseEntity.ok(logFiles);
-        } catch (IOException e) {
-            return ResponseEntity.internalServerError().build();
-        }
-    }
-
-    private boolean isValidLogFile(Path path) {
-        String filename = path.getFileName().toString();
-        return filename.startsWith("log-") && filename.endsWith(".txt");
-    }
-
-    private String extractLogId(Path path) {
-        return path.getFileName().toString()
-                .replace("log-", "")
-                .replace(".txt", "");
     }
 
     private List<String> filterLogsByDate(Path logPath, String date) throws IOException {
@@ -158,5 +99,4 @@ public class LogController {
             return ResponseEntity.internalServerError().build();
         }
     }
-
 }

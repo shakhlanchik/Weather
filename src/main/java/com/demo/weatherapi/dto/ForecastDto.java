@@ -53,4 +53,16 @@ public class ForecastDto {
             nullable = true
     )
     private String condition;
+
+    public ForecastDto(Integer id, Integer cityId, LocalDate date, double minTemp, double maxTemp) {
+        this.id = id;
+        this.cityId = cityId;
+        this.date = date;
+        this.temperatureMin = minTemp;
+        this.temperatureMax = maxTemp;
+    }
+
+    public ForecastDto() {
+
+    }
 }
