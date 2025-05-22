@@ -2,7 +2,6 @@ package com.demo.weatherapi.aspect;
 
 import java.util.Arrays;
 import java.util.stream.Collectors;
-
 import org.aspectj.lang.JoinPoint;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.AfterReturning;
@@ -63,8 +62,10 @@ public class LoggingAspect {
                     })
                     .collect(Collectors.joining("; "));
         } else if (ex instanceof MissingServletRequestParameterException) {
-            MissingServletRequestParameterException msrpe = (MissingServletRequestParameterException) ex;
-            return "Отсутствует параметр: " + msrpe.getParameterName() + " (" + msrpe.getParameterType() + ")";
+            MissingServletRequestParameterException msrpe
+                    = (MissingServletRequestParameterException) ex;
+            return "Отсутствует параметр: " + msrpe.getParameterName()
+                    + " (" + msrpe.getParameterType() + ")";
         }
         return ex.getMessage();
     }
