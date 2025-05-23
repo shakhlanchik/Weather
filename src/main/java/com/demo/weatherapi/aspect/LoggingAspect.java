@@ -54,16 +54,13 @@ public class LoggingAspect {
         if (ex instanceof MethodArgumentNotValidException) {
             return ((MethodArgumentNotValidException) ex).getBindingResult().getAllErrors().stream()
                     .map(error -> {
-                        if (error instanceof FieldError) {
-                            FieldError fe = (FieldError) error;
+                        if (error instanceof FieldError fe) {
                             return fe.getField() + ": " + fe.getDefaultMessage();
                         }
                         return error.getObjectName() + ": " + error.getDefaultMessage();
                     })
                     .collect(Collectors.joining("; "));
-        } else if (ex instanceof MissingServletRequestParameterException) {
-            MissingServletRequestParameterException msrpe
-                    = (MissingServletRequestParameterException) ex;
+        } else if (ex instanceof MissingServletRequestParameterException msrpe) {
             return "Отсутствует параметр: " + msrpe.getParameterName()
                     + " (" + msrpe.getParameterType() + ")";
         }
@@ -74,7 +71,7 @@ public class LoggingAspect {
     public void logBefore(org.aspectj.lang.JoinPoint joinPoint) {
         MethodSignature methodSignature = (MethodSignature) joinPoint.getSignature();
 
-        Object[] args = (joinPoint != null) ? joinPoint.getArgs() : null;
+        Object[] args = joinPoint.getArgs();
         String argsStr = (args != null) ? Arrays.toString(args) : "[]";
 
         logger.info("➡ Вход в метод: {}.{} с аргументами: {}",
@@ -85,8 +82,7 @@ public class LoggingAspect {
 
     @AfterReturning(pointcut = "controllerMethods() || serviceMethods()", returning = "result")
     public void logAfter(org.aspectj.lang.JoinPoint joinPoint, Object result) {
-        if (result instanceof ResponseEntity) {
-            ResponseEntity<?> response = (ResponseEntity<?>) result;
+        if (result instanceof ResponseEntity<?> response) {
             if (response.getStatusCode().is4xxClientError()) {
                 MethodSignature signature = (MethodSignature) joinPoint.getSignature();
                 logger.warn("Клиентская ошибка в {}.{}: статус {} - тело: {}",
@@ -103,15 +99,6 @@ public class LoggingAspect {
                 methodSignature.getDeclaringType().getSimpleName(),
                 methodSignature.getName(),
                 result);
-    }
-
-    private void log4xxResponse(org.aspectj.lang.JoinPoint joinPoint, ResponseEntity<?> response) {
-        MethodSignature methodSignature = (MethodSignature) joinPoint.getSignature();
-        logger.warn("Клиентская ошибка в {}.{}: статус {} - тело: {}",
-                methodSignature.getDeclaringType().getSimpleName(),
-                methodSignature.getName(),
-                response.getStatusCodeValue(),
-                response.getBody());
     }
 
     @Around("controllerMethods() || serviceMethods()")

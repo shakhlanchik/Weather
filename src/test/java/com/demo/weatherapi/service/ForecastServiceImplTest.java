@@ -588,7 +588,6 @@ class ForecastServiceImplTest {
                 .isInstanceOf(BadRequestException.class)
                 .hasMessageContaining("Список ID прогнозов не может быть null или пустым");
     }
-
     @Test
     void deleteBulk_throwsIfSomeForecastsNotFound() {
         when(forecastRepository.findAllById(List.of(1))).thenReturn(List.of());

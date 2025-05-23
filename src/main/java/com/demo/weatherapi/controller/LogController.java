@@ -1,102 +1,53 @@
 package com.demo.weatherapi.controller;
 
+import com.demo.weatherapi.service.LogService;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.Pattern;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.time.format.DateTimeFormatter;
-import java.util.List;
-import java.util.stream.Stream;
-import org.springframework.core.io.InputStreamResource;
+import java.util.Map;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/logs")
-@Tag(name = "LogController", description = "Контроллер для получения логов приложения")
+@Tag(name = "LogController", description = "Контроллер для работы с логами")
 public class LogController {
+    private final LogService logService;
 
-    private static final String LOG_PATH = "logs/";
-
-    static {
-        DateTimeFormatter.ofPattern("yyyy-MM-dd");
+    public LogController(LogService logService) {
+        this.logService = logService;
     }
 
-    @Operation(summary = "Получить основные логи по дате", description
-            = "Возвращает строки из app.log, начинающиеся с указанной даты (формат yyyy-MM-dd).")
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Логи успешно получены"),
-        @ApiResponse(responseCode = "404", description = "Файл логов не найден"),
-        @ApiResponse(responseCode = "500", description = "Ошибка сервера")
-    })
-    @GetMapping("/main")
-    public ResponseEntity<List<String>> getMainLogsByDate(
-            @Parameter(description = "Дата в формате yyyy-MM-dd") @RequestParam String date) {
-        try {
-            Path logPath = Paths.get(LOG_PATH + "app.log");
-            if (!Files.exists(logPath)) {
-                return ResponseEntity.notFound().build();
-            }
-
-            List<String> filteredLogs = filterLogsByDate(logPath, date);
-            return ResponseEntity.ok(filteredLogs);
-        } catch (IOException e) {
-            return ResponseEntity.internalServerError().build();
-        }
-    }
-
-    private List<String> filterLogsByDate(Path logPath, String date) throws IOException {
-        try (Stream<String> lines = Files.lines(logPath)) {
-            return lines
-                    .filter(line -> line.startsWith(date))
-                    .toList();
-        }
-    }
-
-    @GetMapping("/main/download")
-    @Operation(summary = "Сформировать лог-файл по дате", description
-            = "Формирует отдельный лог-файл за указанную дату и возвращает его для скачивания.")
-    public ResponseEntity<Resource> downloadLogByDate(
+    @Operation(summary = "Создать лог-файл по дате (асинхронно)")
+    @PostMapping("/async")
+    public ResponseEntity<Map<String, String>> createLogFileAsync(
             @RequestParam @Pattern(regexp = "^\\d{4}-\\d{2}-\\d{2}$") String date) {
+        String taskId = logService.createLogFileAsync(date);
+        return ResponseEntity.accepted().body(Map.of(
+                "taskId", taskId,
+                "statusUrl", "/api/logs/status/" + taskId,
+                "fileUrl", "/api/logs/file/" + taskId
+        ));
+    }
+
+    @Operation(summary = "Проверить статус задачи")
+    @GetMapping("/status/{taskId}")
+    public ResponseEntity<LogService.TaskInfo> getTaskStatus(
+            @PathVariable String taskId) {
+        return ResponseEntity.ok(logService.getTaskInfo(taskId));
+    }
+
+    @Operation(summary = "Получить лог-файл по ID задачи")
+    @GetMapping("/file/{taskId}")
+    public ResponseEntity<Resource> getLogFile(@PathVariable String taskId) {
         try {
-            Path logPath = Paths.get("logs", "app.log").normalize().toAbsolutePath();
-
-            if (!logPath.startsWith(Paths.get("logs").toAbsolutePath())) {
-                return ResponseEntity.badRequest().build();
-            }
-
-            if (!Files.exists(logPath)) {
-                return ResponseEntity.notFound().build();
-            }
-
-            List<String> filteredLines = filterLogsByDate(logPath, date);
-            if (filteredLines.isEmpty()) {
-                return ResponseEntity.noContent().build();
-            }
-
-            Path tempFile = Files.createTempFile("logs-" + date + "-", ".log");
-            Files.write(tempFile, filteredLines);
-
-            Resource resource = new InputStreamResource(Files.newInputStream(tempFile));
-            return ResponseEntity.ok()
-                    .header(HttpHeaders.CONTENT_DISPOSITION,
-                            "attachment; filename=logs-" + date + ".log")
-                    .contentType(MediaType.TEXT_PLAIN)
-                    .body(resource);
+            return logService.getLogFileStream(taskId);
         } catch (IOException e) {
-            return ResponseEntity.internalServerError().build();
+            return ResponseEntity.status(500)
+                    .body(new ByteArrayResource(("Error: " + e.getMessage()).getBytes()));
         }
     }
 }

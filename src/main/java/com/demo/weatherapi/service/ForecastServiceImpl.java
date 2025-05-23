@@ -55,6 +55,10 @@ public class ForecastServiceImpl implements ForecastService {
         }
 
         Forecast forecast = forecastMapper.toEntity(forecastDto);
+        return getForecastDto(forecastDto, city, forecast);
+    }
+
+    private ForecastDto getForecastDto(ForecastDto forecastDto, City city, Forecast forecast) {
         forecast.setCity(city);
         Forecast savedForecast = forecastRepository.save(forecast);
         ForecastDto savedDto = forecastMapper.toDto(savedForecast);
@@ -102,16 +106,7 @@ public class ForecastServiceImpl implements ForecastService {
                 new BadRequestException(cityWithId + forecastDto.getCityId() + notFound));
 
         forecastMapper.updateFromDto(forecastDto, existingForecast);
-        existingForecast.setCity(city);
-
-        Forecast updatedForecast = forecastRepository.save(existingForecast);
-        ForecastDto updatedDto = forecastMapper.toDto(updatedForecast);
-
-        forecastCache.cacheSingleForecast(updatedDto);
-        forecastCache.evictForecastsByCity(city.getId());
-        forecastCache.evictForecastsByCityAndDate(city.getId(), forecastDto.getDate());
-
-        return updatedDto;
+        return getForecastDto(forecastDto, city, existingForecast);
     }
 
     @Override
