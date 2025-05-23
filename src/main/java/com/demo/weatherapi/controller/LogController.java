@@ -5,6 +5,8 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.Pattern;
 import java.io.IOException;
+import java.util.Date;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
@@ -35,9 +37,23 @@ public class LogController {
 
     @Operation(summary = "Проверить статус задачи")
     @GetMapping("/status/{taskId}")
-    public ResponseEntity<LogService.TaskInfo> getTaskStatus(
+    public ResponseEntity<Map<String, Object>> getTaskStatus(
             @PathVariable String taskId) {
-        return ResponseEntity.ok(logService.getTaskInfo(taskId));
+
+        LogService.TaskInfo task = logService.getTaskInfo(taskId);
+
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("taskId", taskId);
+        response.put("status", task.getStatus());
+        response.put("createdAt", new Date(task.getCreationTime()));
+
+        if (LogService.STATUS_PROCESSING.equals(task.getStatus())) {
+            response.put("message", "File is being processed...");
+        } else if (task.getMessage() != null) {
+            response.put("message", task.getMessage());
+        }
+
+        return ResponseEntity.ok(response);
     }
 
     @Operation(summary = "Получить лог-файл по ID задачи")

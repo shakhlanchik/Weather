@@ -5,6 +5,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -32,28 +33,46 @@ public class LogService {
     private static final String LOG_DIR = "logs/";
     private static final long TASK_TTL_HOURS = 24;
 
+    public static final String STATUS_PROCESSING = "PROCESSING";
+    public static final String STATUS_COMPLETED = "COMPLETED";
+    public static final String STATUS_FAILED = "FAILED";
+    public static final String STATUS_NOT_FOUND = "NOT_FOUND";
+
     private final Map<String, TaskInfo> tasks = new ConcurrentHashMap<>();
     private final TaskExecutor taskExecutor;
 
     public LogService(@Qualifier("taskExecutor") TaskExecutor taskExecutor) {
         this.taskExecutor = taskExecutor;
+        createLogsDirectory();
+    }
+
+    private void createLogsDirectory() {
+        try {
+            Path path = Paths.get(LOG_DIR);
+            if (!Files.exists(path)) {
+                Files.createDirectories(path);
+                logger.info("Created logs directory: {}", path.toAbsolutePath());
+            }
+        } catch (IOException e) {
+            logger.error("Failed to create logs directory", e);
+        }
     }
 
     public String createLogFileAsync(String date) {
         String taskId = UUID.randomUUID().toString();
-        TaskInfo task = new TaskInfo("PENDING", System.currentTimeMillis());
+        TaskInfo task = new TaskInfo(STATUS_PROCESSING, System.currentTimeMillis());
         tasks.put(taskId, task);
 
         taskExecutor.execute(() -> {
             try {
+                Thread.sleep(10000);
+
                 Path logDir = Paths.get(LOG_DIR);
                 if (!Files.exists(logDir)) {
                     Files.createDirectories(logDir);
                 }
 
-                tasks.put(taskId, task.updateStatus("PROCESSING"));
-
-                Path sourceLogPath = Paths.get(LOG_DIR + "app.log");
+                Path sourceLogPath = Paths.get(LOG_DIR, "app.log");
                 if (!Files.exists(sourceLogPath)) {
                     throw new IOException("Source log file not found");
                 }
@@ -63,12 +82,12 @@ public class LogService {
                         .toList();
 
                 if (filteredLines.isEmpty()) {
-                    tasks.put(taskId, task.updateStatus("FAILED").setMessage("No logs for date"));
+                    updateTaskStatus(taskId, STATUS_FAILED, "No logs for date");
                     return;
                 }
 
-                String fileName = "log-" + date + "-" + taskId + ".txt";
-                Path targetPath = Paths.get(LOG_DIR + fileName);
+                String fileName = "log-" + date + "-" + taskId + ".log";
+                Path targetPath = Paths.get(LOG_DIR, fileName);
 
                 synchronized (this) {
                     Files.write(targetPath, filteredLines,
@@ -76,16 +95,29 @@ public class LogService {
                             StandardOpenOption.WRITE);
                 }
 
-                tasks.put(taskId, task.updateStatus("COMPLETED").setResultFile(fileName));
+                updateTaskStatus(taskId, STATUS_COMPLETED, fileName);
 
             } catch (Exception e) {
-                tasks.put(taskId, task.updateStatus("FAILED").setMessage(e.getMessage()));
+                updateTaskStatus(taskId, STATUS_FAILED, e.getMessage());
                 logger.error("Error creating log file: {}", e.getMessage());
             }
         });
 
-        cleanupOldTasks();
         return taskId;
+    }
+
+    private void updateTaskStatus(String taskId, String status, String messageOrFile) {
+        TaskInfo task = tasks.get(taskId);
+        if (task != null) {
+            task.setStatus(status);
+            if (status.equals(STATUS_COMPLETED)) {
+                task.setResultFile(messageOrFile);
+            } else {
+                task.setMessage(messageOrFile);
+            }
+            task.setLastUpdated(System.currentTimeMillis());
+            logger.info("Task {} status updated to {}", taskId, status);
+        }
     }
 
     private void cleanupOldTasks() {
@@ -96,22 +128,23 @@ public class LogService {
     }
 
     public TaskInfo getTaskInfo(String taskId) {
-        return tasks.getOrDefault(taskId, new TaskInfo("NOT_FOUND", 0));
+        return tasks.getOrDefault(taskId,
+                new TaskInfo(STATUS_NOT_FOUND, System.currentTimeMillis()));
     }
 
     public ResponseEntity<Resource> getLogFileStream(String taskId) throws IOException {
         TaskInfo task = tasks.get(taskId);
-        if (task == null || !"COMPLETED".equals(task.getStatus())) {
-            throw new IOException("Task not ready");
+        if (task == null || !STATUS_COMPLETED.equals(task.getStatus())) {
+            throw new IOException("Task not ready. Current status: " +
+                    (task != null ? task.getStatus() : "null"));
         }
 
         Path filePath = Paths.get(LOG_DIR, task.getResultFile());
         if (!Files.exists(filePath)) {
-            throw new IOException("File not found");
+            throw new IOException("File not found: " + filePath.getFileName());
         }
 
         Resource resource = new FileSystemResource(filePath);
-
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION,
                         "attachment; filename=\"" + filePath.getFileName() + "\"")
@@ -122,48 +155,67 @@ public class LogService {
 
     public String getLogFileContent(String taskId) throws IOException {
         TaskInfo task = tasks.get(taskId);
-        if (task == null || !"COMPLETED".equals(task.getStatus())) {
-            throw new IOException("Task not ready");
+        if (task == null || !STATUS_COMPLETED.equals(task.getStatus())) {
+            throw new IOException("Task not ready. Current status: " +
+                    (task != null ? task.getStatus() : "null"));
         }
 
         Path filePath = Paths.get(LOG_DIR, task.getResultFile());
         if (!Files.exists(filePath)) {
-            throw new IOException("File not found");
+            throw new IOException("File not found: " + filePath.getFileName());
         }
 
         return new String(Files.readAllBytes(filePath));
     }
 
-    public String getTaskStatus(String taskId) {
-        return null;
+    public Map<String, Object> getTaskStatus(String taskId) {
+        TaskInfo task = getTaskInfo(taskId);
+        Map<String, Object> response = new java.util.LinkedHashMap<>();
+        response.put("taskId", taskId);
+        response.put("status", task.getStatus());
+        response.put("createdAt", new Date(task.getCreationTime()));
+        response.put("lastUpdated", new Date(task.getLastUpdated()));
+
+        if (STATUS_PROCESSING.equals(task.getStatus())) {
+            response.put("progress", "File is being processed");
+        } else if (task.getMessage() != null) {
+            response.put("message", task.getMessage());
+        } else if (task.getResultFile() != null) {
+            response.put("file", task.getResultFile());
+        }
+
+        return response;
     }
 
     @Getter
     @Setter
-
     @AllArgsConstructor
     public static class TaskInfo {
         private String status;
         private long creationTime;
+        private long lastUpdated;
         private String message;
         private String resultFile;
 
         public TaskInfo(String status, long creationTime) {
-            this(status, creationTime, null, null);
+            this(status, creationTime, creationTime, null, null);
         }
 
         public TaskInfo updateStatus(String status) {
             this.status = status;
+            this.lastUpdated = System.currentTimeMillis();
             return this;
         }
 
         public TaskInfo setMessage(String message) {
             this.message = message;
+            this.lastUpdated = System.currentTimeMillis();
             return this;
         }
 
         public TaskInfo setResultFile(String resultFile) {
             this.resultFile = resultFile;
+            this.lastUpdated = System.currentTimeMillis();
             return this;
         }
     }
