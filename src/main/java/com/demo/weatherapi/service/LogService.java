@@ -10,7 +10,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
@@ -31,7 +30,6 @@ import org.springframework.stereotype.Service;
 public class LogService {
     private static final Logger logger = LoggerFactory.getLogger(LogService.class);
     private static final String LOG_DIR = "logs/";
-    private static final long TASK_TTL_HOURS = 24;
 
     public static final String STATUS_PROCESSING = "PROCESSING";
     public static final String STATUS_COMPLETED = "COMPLETED";
@@ -106,7 +104,7 @@ public class LogService {
         return taskId;
     }
 
-    private void updateTaskStatus(String taskId, String status, String messageOrFile) {
+    void updateTaskStatus(String taskId, String status, String messageOrFile) {
         TaskInfo task = tasks.get(taskId);
         if (task != null) {
             task.setStatus(status);
@@ -118,13 +116,6 @@ public class LogService {
             task.setLastUpdated(System.currentTimeMillis());
             logger.info("Task {} status updated to {}", taskId, status);
         }
-    }
-
-    private void cleanupOldTasks() {
-        long threshold = System.currentTimeMillis() - TimeUnit.HOURS.toMillis(TASK_TTL_HOURS);
-        tasks.entrySet().removeIf(entry ->
-                entry.getValue().getCreationTime() < threshold
-        );
     }
 
     public TaskInfo getTaskInfo(String taskId) {
@@ -153,7 +144,7 @@ public class LogService {
                 .body(resource);
     }
 
-    public String getLogFileContent(String taskId) throws IOException {
+    public void getLogFileContent(String taskId) throws IOException {
         TaskInfo task = tasks.get(taskId);
         if (task == null || !STATUS_COMPLETED.equals(task.getStatus())) {
             throw new IOException("Task not ready. Current status: " +
@@ -165,7 +156,7 @@ public class LogService {
             throw new IOException("File not found: " + filePath.getFileName());
         }
 
-        return new String(Files.readAllBytes(filePath));
+        Files.readAllBytes(filePath);
     }
 
     public Map<String, Object> getTaskStatus(String taskId) {
@@ -201,22 +192,14 @@ public class LogService {
             this(status, creationTime, creationTime, null, null);
         }
 
-        public TaskInfo updateStatus(String status) {
-            this.status = status;
-            this.lastUpdated = System.currentTimeMillis();
-            return this;
-        }
-
-        public TaskInfo setMessage(String message) {
+        public void setMessage(String message) {
             this.message = message;
             this.lastUpdated = System.currentTimeMillis();
-            return this;
         }
 
-        public TaskInfo setResultFile(String resultFile) {
+        public void setResultFile(String resultFile) {
             this.resultFile = resultFile;
             this.lastUpdated = System.currentTimeMillis();
-            return this;
         }
     }
 }

@@ -29,7 +29,6 @@ public class VisitCounterIntegrationTest {
 
     @Test
     public void testVisitCounting() throws Exception {
-        // 1. Проверяем, что эндпоинты доступны
         mockMvc.perform(get("/city/all"))
                 .andExpect(status().isOk());
 
@@ -39,7 +38,6 @@ public class VisitCounterIntegrationTest {
         mockMvc.perform(get("/forecast/all"))
                 .andExpect(status().isOk());
 
-        // 2. Проверяем счетчики
         assertThat(visitCounterService.getVisitCount("/city/all")).isEqualTo(2);
         assertThat(visitCounterService.getVisitCount("/forecast/all")).isEqualTo(1);
     }

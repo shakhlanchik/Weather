@@ -14,23 +14,17 @@ public class VisitCounterConcurrencyTest {
 
     @Test
     public void testConcurrentVisits() throws InterruptedException {
-        // Конфигурация
         final int threadCount = 100;
         final ExecutorService executor = Executors.newFixedThreadPool(threadCount);
 
-        // Запуск потоков
         for (int i = 0; i < threadCount; i++) {
-            executor.execute(() -> {
-                counterService.incrementVisit(testUrl); // Тестируемый метод
-            });
+            executor.execute(() -> counterService.incrementVisit(testUrl));
         }
 
-        // Ожидание завершения
         executor.shutdown();
         assertTrue(executor.awaitTermination(2, TimeUnit.SECONDS));
 
-        // Проверка
-        assertThat(counterService.getVisitCount(testUrl)) // Проверяемый метод
+        assertThat(counterService.getVisitCount(testUrl))
                 .as("Счетчик должен точно отражать %d запросов", threadCount)
                 .isEqualTo(threadCount);
     }
