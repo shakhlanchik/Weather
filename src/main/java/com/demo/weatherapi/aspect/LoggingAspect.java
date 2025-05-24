@@ -88,7 +88,7 @@ public class LoggingAspect {
                 logger.warn("Клиентская ошибка в {}.{}: статус {} - тело: {}",
                         signature.getDeclaringType().getSimpleName(),
                         signature.getName(),
-                        response.getStatusCodeValue(),
+                        response.getStatusCode().value(),
                         response.getBody());
                 return;
             }
