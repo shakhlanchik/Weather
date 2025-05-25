@@ -9,7 +9,6 @@ import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -37,7 +36,7 @@ public class GlobalExceptionHandler {
             MethodArgumentNotValidException ex) {
         List<String> errors = ex.getBindingResult().getAllErrors().stream()
                 .map(this::getErrorMessage)
-                .collect(Collectors.toList());
+                .toList();
 
         logger.warn("Validation error: {}", errors, ex);
 

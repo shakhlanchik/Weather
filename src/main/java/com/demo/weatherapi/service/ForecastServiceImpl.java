@@ -201,8 +201,7 @@ public class ForecastServiceImpl implements ForecastService {
                         || (f.getTemperatureMin() != null && f.getTemperatureMin() >= minTemp))
                 .filter(f -> maxTemp == null
                         || (f.getTemperatureMax() != null && f.getTemperatureMax() <= maxTemp))
-                .map(forecastMapper::toDto)
-                .collect(Collectors.toList());
+                .map(forecastMapper::toDto).toList();
     }
 
     @Override
@@ -244,8 +243,7 @@ public class ForecastServiceImpl implements ForecastService {
                     Forecast forecast = forecastMapper.toEntity(dto);
                     forecast.setCity(cities.get(dto.getCityId()));
                     return forecast;
-                })
-                .collect(Collectors.toList());
+                }).toList();
 
         List<Forecast> savedForecasts = forecastRepository.saveAll(forecasts);
 
@@ -258,8 +256,7 @@ public class ForecastServiceImpl implements ForecastService {
         }
 
         return savedForecasts.stream()
-                .map(forecastMapper::toDto)
-                .collect(Collectors.toList());
+                .map(forecastMapper::toDto).toList();
     }
 
     @Override
@@ -269,8 +266,7 @@ public class ForecastServiceImpl implements ForecastService {
             throw new BadRequestException("Список прогнозов не может быть null или пустым");
         }
 
-        List<Integer> ids = forecastDtos.stream().map(ForecastDto::getId)
-                .collect(Collectors.toList());
+        List<Integer> ids = forecastDtos.stream().map(ForecastDto::getId).toList();
         Map<Integer, Forecast> existingForecasts = forecastRepository.findAllById(ids)
                 .stream()
                 .collect(Collectors.toMap(Forecast::getId, Function.identity()));
@@ -298,7 +294,7 @@ public class ForecastServiceImpl implements ForecastService {
 
                     return updatedDto;
                 })
-                .collect(Collectors.toList());
+                .toList();
     }
 
     @Override

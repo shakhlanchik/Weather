@@ -42,7 +42,6 @@ public class ErrorResponse {
 
     public ErrorResponse(String message, List<String> validationErrors) {
         this.message = message;
-        this.statusCode = statusCode;
         this.validationErrors = validationErrors;
     }
 }

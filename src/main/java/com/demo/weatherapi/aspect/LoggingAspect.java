@@ -83,16 +83,14 @@ public class LoggingAspect {
 
     @AfterReturning(pointcut = "controllerMethods() || serviceMethods()", returning = "result")
     public void logAfter(org.aspectj.lang.JoinPoint joinPoint, Object result) {
-        if (result instanceof ResponseEntity<?> response) {
-            if (response.getStatusCode().is4xxClientError()) {
-                MethodSignature signature = (MethodSignature) joinPoint.getSignature();
-                logger.warn("Клиентская ошибка в {}.{}: статус {} - тело: {}",
-                        signature.getDeclaringType().getSimpleName(),
-                        signature.getName(),
-                        response.getStatusCode().value(),
-                        response.getBody());
-                return;
-            }
+        if (result instanceof ResponseEntity<?> response && response.getStatusCode().is4xxClientError()) {
+            MethodSignature signature = (MethodSignature) joinPoint.getSignature();
+            logger.warn("Клиентская ошибка в {}.{}: статус {} - тело: {}",
+                    signature.getDeclaringType().getSimpleName(),
+                    signature.getName(),
+                    response.getStatusCode().value(),
+                    response.getBody());
+            return;
         }
 
         MethodSignature methodSignature = (MethodSignature) joinPoint.getSignature();
