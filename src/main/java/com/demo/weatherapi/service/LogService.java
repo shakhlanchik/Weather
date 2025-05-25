@@ -98,10 +98,10 @@ public class LogService {
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 updateTaskStatus(taskId, STATUS_FAILED, e.getMessage());
-                logger.error("Error creating log file: []", e.getMessage());
+                logger.error(e.getMessage());
             } catch (Exception e) {
                 updateTaskStatus(taskId, STATUS_FAILED, e.getMessage());
-                logger.error("Error creating log file: []", e.getMessage());
+                logger.error(e.getMessage());
             }
         });
 
