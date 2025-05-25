@@ -8,12 +8,12 @@ import java.util.concurrent.TimeUnit;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-public class VisitCounterConcurrencyTest {
+class VisitCounterConcurrencyTest {
     private final VisitCounterService counterService = new VisitCounterService();
     private final String testUrl = "/test-endpoint";
 
     @Test
-    public void testConcurrentVisits() throws InterruptedException {
+    void testConcurrentVisits() throws InterruptedException {
         final int threadCount = 100;
         final ExecutorService executor = Executors.newFixedThreadPool(threadCount);
 
