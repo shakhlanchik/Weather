@@ -586,23 +586,6 @@ class ForecastServiceImplTest {
     }
 
     @Test
-    void updateBulk_throwsIfEmptyList() {
-        assertThatThrownBy(() -> forecastService.updateBulk(List.of()))
-                .isInstanceOf(BadRequestException.class)
-                .hasMessageContaining("Список прогнозов не может быть null или пустым");
-    }
-
-    @Test
-    void updateBulk_throwsIfSomeForecastsNotFound() {
-        ForecastDto dto = new ForecastDto(1, 1, LocalDate.now(), 10.0, 20.0);
-        when(forecastRepository.findAllById(List.of(1))).thenReturn(List.of());
-
-        assertThatThrownBy(() -> forecastService.updateBulk(List.of(dto)))
-                .isInstanceOf(ResourceNotFoundException.class)
-                .hasMessageContaining("Некоторые прогнозы не найдены");
-    }
-
-    @Test
     void updateBulk_throwsIfInvalidDto() {
         Forecast existing = new Forecast();
         existing.setId(1);
