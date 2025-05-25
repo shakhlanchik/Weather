@@ -16,6 +16,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Stream;
 
@@ -461,33 +462,85 @@ class ForecastServiceImplTest {
                 .hasMessageContaining("Список прогнозов не может быть null или пустым");
     }
 
-    @Test
-    void createBulk_throwsIfEmptyList() {
-        assertThatThrownBy(() -> forecastService.createBulk(List.of()))
-                .isInstanceOf(BadRequestException.class)
-                .hasMessageContaining("Список прогнозов не может быть null или пустым");
+    private static Stream<Arguments> provideBulkTestCases() {
+        LocalDate testDate = LocalDate.now();
+        return Stream.of(
+                // Пустой список
+                Arguments.of(
+                        List.of(),
+                        "Список прогнозов не может быть null или пустым",
+                        new MockSetup[]{} // Без моков
+                ),
+                // Отсутствующий город
+                Arguments.of(
+                        List.of(new ForecastDto(null, 10, testDate, 10.0, 20.0)),
+                        "Города с ID не найдены",
+                        new MockSetup[]{
+                                context -> when(context.cityRepository().findAllById(Set.of(10)))
+                                        .thenReturn(Collections.emptyList())
+                        }
+                ),
+                // Дубликат прогноза
+                Arguments.of(
+                        List.of(new ForecastDto(null, 1, testDate, 10.0, 20.0)),
+                        "Прогноз для города ID 1 на дату " + testDate.format(DateTimeFormatter.ISO_DATE) + " уже существует",
+                        new MockSetup[]{
+                                context -> {
+                                    City city = new City(1, "City1");
+                                    when(context.cityRepository().findAllById(Set.of(1)))
+                                            .thenReturn(List.of(city));
+                                    when(context.forecastRepository().existsByCityAndDate(city, testDate))
+                                            .thenReturn(true);
+                                }
+                        }
+                )
+        );
     }
 
-    @Test
-    void createBulk_throwsIfMissingCity() {
-        ForecastDto dto = new ForecastDto(null, 10, LocalDate.now(), 10.0, 20.0);
-        when(cityRepository.findAllById(Set.of(10))).thenReturn(List.of());
+    @ParameterizedTest
+    @MethodSource("provideBulkTestCases")
+    void createBulk_InvalidRequests_ThrowsBadRequestException(
+            List<ForecastDto> input,
+            String expectedMessage,
+            MockSetup[] mockSetups
+    ) {
+        for (MockSetup setup : mockSetups) {
+            setup.configure(new MockContextImpl(cityRepository, forecastRepository));
+        }
 
-        assertThatThrownBy(() -> forecastService.createBulk(List.of(dto)))
+        assertThatThrownBy(() -> forecastService.createBulk(input))
                 .isInstanceOf(BadRequestException.class)
-                .hasMessageContaining("Города с ID не найдены");
+                .hasMessageContaining(expectedMessage);
     }
 
-    @Test
-    void createBulk_throwsIfDuplicateExists() {
-        ForecastDto dto = new ForecastDto(null, 1, LocalDate.now(), 10.0, 20.0);
-        City city = new City(1, "City1");
-        when(cityRepository.findAllById(Set.of(1))).thenReturn(List.of(city));
-        when(forecastRepository.existsByCityAndDate(city, dto.getDate())).thenReturn(true);
+    @FunctionalInterface
+    interface MockSetup {
+        void configure(MockContext context);
+    }
 
-        assertThatThrownBy(() -> forecastService.createBulk(List.of(dto)))
-                .isInstanceOf(BadRequestException.class)
-                .hasMessageContaining("Прогноз для города ID 1 на дату " + dto.getDate().format(java.time.format.DateTimeFormatter.ISO_DATE) + " уже существует");
+    interface MockContext {
+        CityRepository cityRepository();
+        ForecastRepository forecastRepository();
+    }
+
+    private static class MockContextImpl implements MockContext {
+        private final CityRepository cityRepository;
+        private final ForecastRepository forecastRepository;
+
+        MockContextImpl(CityRepository cityRepo, ForecastRepository forecastRepo) {
+            this.cityRepository = cityRepo;
+            this.forecastRepository = forecastRepo;
+        }
+
+        @Override
+        public CityRepository cityRepository() {
+            return cityRepository;
+        }
+
+        @Override
+        public ForecastRepository forecastRepository() {
+            return forecastRepository;
+        }
     }
 
     @Test
