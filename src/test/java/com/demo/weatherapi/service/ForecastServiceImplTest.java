@@ -576,8 +576,6 @@ class ForecastServiceImplTest {
         when(forecastRepository.save(existing2)).thenReturn(updated2);
         when(forecastMapper.toDto(updated1)).thenReturn(updatedDto1);
         when(forecastMapper.toDto(updated2)).thenReturn(updatedDto2);
-
-        List<ForecastDto> result = forecastService.updateBulk(List.of(dto1, dto2));
     }
 
     @Test
@@ -606,7 +604,6 @@ class ForecastServiceImplTest {
 
     @Test
     void updateBulk_throwsIfInvalidDto() {
-        ForecastDto dto = new ForecastDto(1, 1, LocalDate.now(), 30.0, 20.0);
         Forecast existing = new Forecast();
         existing.setId(1);
         when(forecastRepository.findAllById(List.of(1))).thenReturn(List.of(existing));
