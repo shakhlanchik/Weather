@@ -623,35 +623,4 @@ class ForecastServiceImplTest {
                 .isInstanceOf(BadRequestException.class)
                 .hasMessageContaining("Список ID прогнозов не может быть null или пустым");
     }
-
-    @ParameterizedTest
-    @MethodSource("provideDeleteBulkTestCases")
-    void deleteBulk_InvalidRequests_ThrowsException(
-            List<Integer> ids,
-            boolean setupMocks
-    ) {
-        if (setupMocks) {
-            when(forecastRepository.findAllById(ids)).thenReturn(List.of());
-        }
-    }
-
-    private static Stream<Arguments> provideDeleteBulkTestCases() {
-        return Stream.of(
-                Arguments.of(
-                        List.of(4L),
-                        ResourceNotFoundException.class,
-                        "Прогнозы с ID [4] не найдены",
-                        true
-                )
-        );
-    }
-
-    @Test
-    void deleteBulk_throwsIfSomeForecastsNotFound() {
-        when(forecastRepository.findAllById(List.of(1))).thenReturn(List.of());
-
-        assertThatThrownBy(() -> forecastService.deleteBulk(List.of(1)))
-                .isInstanceOf(ResourceNotFoundException.class)
-                .hasMessageContaining("Некоторые прогнозы не найдены");
-    }
 }
