@@ -11,9 +11,13 @@ import com.demo.weatherapi.repository.CityRepository;
 import com.demo.weatherapi.repository.ForecastRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import java.time.LocalDate;
 import java.util.*;
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -325,19 +329,24 @@ class ForecastServiceImplTest {
         verify(forecastCache).cacheForecastsByNameAndDate("Moscow", LocalDate.now(), result);
     }
 
-    @Test
-    void getForecastsByNameAndDate_nullArgs() {
-        assertThatThrownBy(() -> forecastService.getForecastsByNameAndDate(null, LocalDate.now()))
+    @ParameterizedTest
+    @MethodSource("provideInvalidArgs")
+    void getForecastsByNameAndDate_InvalidArgs_ThrowsBadRequestException(
+            String cityName,
+            LocalDate date,
+            String expectedMessage
+    ) {
+        assertThatThrownBy(() -> forecastService.getForecastsByNameAndDate(cityName, date))
                 .isInstanceOf(BadRequestException.class)
-                .hasMessageContaining("Имя города и дата обязательны");
+                .hasMessageContaining(expectedMessage);
+    }
 
-        assertThatThrownBy(() -> forecastService.getForecastsByNameAndDate("Moscow", null))
-                .isInstanceOf(BadRequestException.class)
-                .hasMessageContaining("Имя города и дата обязательны");
-
-        assertThatThrownBy(() -> forecastService.getForecastsByNameAndDate("", LocalDate.now()))
-                .isInstanceOf(BadRequestException.class)
-                .hasMessageContaining("Имя города и дата обязательны");
+    private static Stream<Arguments> provideInvalidArgs() {
+        return Stream.of(
+                Arguments.of(null, LocalDate.now(), "Имя города и дата обязательны"),
+                Arguments.of("Moscow", null, "Имя города и дата обязательны"),
+                Arguments.of("", LocalDate.now(), "Имя города и дата обязательны")
+        );
     }
 
     @Test

@@ -14,7 +14,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @AutoConfigureMockMvc
-public class VisitCounterIntegrationTest {
+class VisitCounterIntegrationTest {
 
     @Autowired
     private MockMvc mockMvc;
@@ -23,12 +23,12 @@ public class VisitCounterIntegrationTest {
     private VisitCounterService visitCounterService;
 
     @BeforeEach
-    public void resetCounters() {
+    void resetCounters() {
         visitCounterService.resetCounters();
     }
 
     @Test
-    public void testVisitCounting() throws Exception {
+    void testVisitCounting() throws Exception {
         mockMvc.perform(get("/city/all"))
                 .andExpect(status().isOk());
 
