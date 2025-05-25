@@ -4,11 +4,7 @@ plugins {
     id 'io.spring.dependency-management' version '1.1.7'
     id "io.swagger.core.v3.swagger-gradle-plugin" version "2.2.31"
     id 'jacoco'
-    id 'org.sonarqube' version '4.4.1.3373'
-}
-
-tasks.withType(JavaCompile) {
-    options.compilerArgs += ["-Xlint:deprecation"]
+    id "org.sonarqube" version "4.4.1.3373"
 }
 
 group = 'com.demo'
@@ -18,6 +14,8 @@ java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(17)
     }
+    sourceCompatibility = '17'
+    targetCompatibility = '17'
 }
 
 configurations {
@@ -84,18 +82,16 @@ sonarqube {
         property "sonar.organization", "shakhlanchik"
         property "sonar.host.url", "https://sonarcloud.io"
         property "sonar.login", System.getenv("SONAR_TOKEN")
-
         property "sonar.qualitygate.wait", "true"
         property "sonar.java.binaries", "${buildDir}/classes/java/main"
         property "sonar.java.test.binaries", "${buildDir}/classes/java/test"
         property "sonar.coverage.jacoco.xmlReportPaths", "${buildDir}/reports/jacoco/test/jacocoTestReport.xml"
         property "sonar.junit.reportPaths", "${buildDir}/test-results/test"
-
         property "sonar.sources", "src/main/java"
         property "sonar.tests", "src/test/java"
         property "sonar.sourceEncoding", "UTF-8"
         property "sonar.test.inclusions", "**/*Test.java"
-        property "sonar.exclusions", """
+        property "sonar.coverage.exclusions", """
             **/dto/**,
             **/model/**,
             **/exception/**,
@@ -103,9 +99,12 @@ sonarqube {
             **/*Application.java,
             **/resources/**
         """
+        property "sonar.java.source", "17"
+        property "sonar.java.target", "17"
     }
 }
 
-tasks.named('sonar').configure {
+tasks.named('sonarqube').configure {
     dependsOn jacocoTestReport
+    mustRunAfter jacocoTestReport
 }

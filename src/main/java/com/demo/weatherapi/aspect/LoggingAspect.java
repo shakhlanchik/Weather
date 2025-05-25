@@ -51,16 +51,17 @@ public class LoggingAspect {
     }
 
     private String getErrorDetails(Throwable ex) {
-        if (ex instanceof MethodArgumentNotValidException) {
-            return ((MethodArgumentNotValidException) ex).getBindingResult().getAllErrors().stream()
+        if (ex instanceof MethodArgumentNotValidException methodEx) {
+            return methodEx.getBindingResult().getAllErrors().stream()
                     .map(error -> {
                         if (error instanceof FieldError fe) {
                             return fe.getField() + ": " + fe.getDefaultMessage();
                         }
                         return error.getObjectName() + ": " + error.getDefaultMessage();
                     })
-                    .collect(Collectors.joining("; "));
-        } else if (ex instanceof MissingServletRequestParameterException msrpe) {
+                    .collect(Collectors.joining(": "));
+        }
+        else if (ex instanceof MissingServletRequestParameterException msrpe) {
             return "Отсутствует параметр: " + msrpe.getParameterName()
                     + " (" + msrpe.getParameterType() + ")";
         }
