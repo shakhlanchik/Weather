@@ -19,6 +19,8 @@ public class ForecastMapper {
         dto.setTemperatureMin(forecast.getTemperatureMin());
         dto.setTemperatureMax(forecast.getTemperatureMax());
         dto.setCondition(forecast.getCondition());
+        dto.setHumidity(forecast.getHumidity());
+        dto.setWindSpeed(forecast.getWindSpeed());
 
         if (forecast.getCity() != null) {
             dto.setCityId(forecast.getCity().getId());
@@ -56,6 +58,12 @@ public class ForecastMapper {
         }
         if (!ObjectUtils.isEmpty(dto.getCondition())) {
             entity.setCondition(dto.getCondition());
+        }
+        if (dto.getHumidity() != null) {
+            entity.setHumidity(dto.getHumidity());
+        }
+        if (dto.getWindSpeed() != null) {
+            entity.setWindSpeed(dto.getWindSpeed());
         }
     }
 }

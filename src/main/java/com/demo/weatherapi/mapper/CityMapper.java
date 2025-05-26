@@ -23,6 +23,7 @@ public class CityMapper {
 
         CityDto dto = new CityDto();
         dto.setId(city.getId());
+        dto.setCountry(city.getCountry());
         dto.setName(city.getName());
 
         if (city.getForecasts() != null && !city.getForecasts().isEmpty()) {
@@ -46,6 +47,7 @@ public class CityMapper {
 
         City city = new City();
         city.setId(dto.getId());
+        city.setCountry(dto.getCountry());
         city.setName(dto.getName());
 
         return city;

@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/logs")
 @Tag(name = "LogController", description = "Контроллер для работы с логами")
+@CrossOrigin(origins = "http://localhost:3000")
 public class LogController {
     private final LogService logService;
 

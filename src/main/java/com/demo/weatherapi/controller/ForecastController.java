@@ -19,19 +19,11 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.ExceptionHandler;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/forecast")
+@CrossOrigin(origins = "http://localhost:3000")
 @Tag(name = "Forecast Controller", description = "Операции с прогнозами погоды")
 public class ForecastController {
 
@@ -133,6 +125,23 @@ public class ForecastController {
             @RequestParam @NotBlank String name,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         return ResponseEntity.ok(forecastService.getForecastsByNameAndDate(name, date));
+    }
+
+    @Operation(
+            summary = "Найти прогноз по названию города",
+            parameters = {
+                    @Parameter(name = "name", description = "Название города")
+            },
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Список прогнозов",
+                            content = @Content(schema = @Schema(implementation = ForecastDto.class)))
+            }
+    )
+    @GetMapping("/name")
+    public ResponseEntity<List<ForecastDto>> getForecastsByName(
+            @RequestParam @NotBlank String name,
+            @RequestParam @NotBlank String country) {
+        return ResponseEntity.ok(forecastService.getForecastsByName(name, country));
     }
 
     @Operation(

@@ -15,9 +15,8 @@ import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.time.LocalDate;
-import lombok.Data;
-import lombok.Getter;
-import lombok.Setter;
+
+import lombok.*;
 
 @Setter
 @Getter
@@ -25,6 +24,8 @@ import lombok.Setter;
 @Entity
 @Table(name = "forecasts")
 @Schema(description = "Прогноз погоды на определённую дату в конкретном городе")
+@EqualsAndHashCode(of = {"id"})
+@ToString(exclude = {"city"})
 public class Forecast {
 
     @Id
@@ -60,4 +61,13 @@ public class Forecast {
     @Schema(description = "Описание погодных условий", example = "Пасмурно, возможен снег")
     private String condition;
 
+    @NotNull(message = "Относительная влажность воздуха обязательна")
+    @Column(name = "humidity")
+    @Schema(description = "Относительная влажность воздуха (%)", example = "75", required = true)
+    private Double humidity;
+
+    @NotNull(message = "Скорость ветра обязательна")
+    @Column(name = "wind_speed")
+    @Schema(description = "Скорость ветра (км/ч)", example = "4.2", required = true)
+    private Double windSpeed;
 }

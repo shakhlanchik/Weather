@@ -54,12 +54,28 @@ public class ForecastDto {
     )
     private String condition;
 
-    public ForecastDto(Integer id, Integer cityId, LocalDate date, double minTemp, double maxTemp) {
+    @Schema(
+            description = "Относительная влажность воздуха",
+            example = "75%",
+            nullable = true
+    )
+    private Double humidity;
+
+    @Schema(
+            description = "Скорость ветра",
+            example = "4.2 км/ч",
+            nullable = true
+    )
+    private Double windSpeed;
+
+    public ForecastDto(Integer id, Integer cityId, LocalDate date, double minTemp, double maxTemp, double humidity, double windSpeed) {
         this.id = id;
         this.cityId = cityId;
         this.date = date;
         this.temperatureMin = minTemp;
         this.temperatureMax = maxTemp;
+        this.humidity = humidity;
+        this.windSpeed = windSpeed;
     }
 
     public ForecastDto() {

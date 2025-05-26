@@ -20,4 +20,8 @@ public interface ForecastRepository extends JpaRepository<Forecast, Integer> {
             + "FROM Forecast f WHERE f.city = :city AND f.date = :date")
     boolean existsByCityAndDate(@Param("city") City city,
                                  @Param("date") LocalDate date);
+
+    @Query("SELECT f FROM Forecast f WHERE f.city.name = :name AND f.city.country = :country")
+    List<Forecast> findForecastsByName(
+            @Param("name") String name, @Param("country") String country);
 }

@@ -15,9 +15,8 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import java.util.ArrayList;
 import java.util.List;
-import lombok.Data;
-import lombok.Getter;
-import lombok.Setter;
+
+import lombok.*;
 
 @Getter
 @Setter
@@ -25,6 +24,8 @@ import lombok.Setter;
 @Entity
 @Table(name = "cities")
 @Schema(description = "Город, к которому относится прогноз погоды")
+@EqualsAndHashCode(of = {"id"})
+@ToString(exclude = {"forecasts"})
 public class City {
 
     @Id
@@ -33,10 +34,16 @@ public class City {
             accessMode = Schema.AccessMode.READ_ONLY)
     private Integer id;
 
+    @NotBlank(message = "Название страны не может быть пустым")
+    @Size(max = 100, message = "Название страны не должно превышать 100 символов")
+    @Column(name = "country", nullable = false)
+    @Schema(description = "Название страны", example = "Беларусь", required = true)
+    private String country;
+
     @NotBlank(message = "Название города не может быть пустым")
     @Size(max = 100, message = "Название города не должно превышать 100 символов")
     @Column(name = "name", nullable = false)
-    @Schema(description = "Название города", example = "Москва", required = true)
+    @Schema(description = "Название города", example = "Минск", required = true)
     private String name;
 
     @OneToMany(mappedBy = "city", fetch = FetchType.LAZY,
@@ -54,8 +61,9 @@ public class City {
         // конструктор по умолчанию (нужен для JPA)
     }
 
-    public City(Integer id, String name) {
+    public City(Integer id, String country, String name) {
         this.id = id;
+        this.country = country;
         this.name = name;
     }
 }

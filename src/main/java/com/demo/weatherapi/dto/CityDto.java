@@ -21,8 +21,15 @@ public class CityDto {
     private Integer id;
 
     @Schema(
+            description = "Название страны",
+            example = "Беларусь",
+            requiredMode = Schema.RequiredMode.REQUIRED
+    )
+    private String country;
+
+    @Schema(
             description = "Название города",
-            example = "Санкт-Петербург",
+            example = "Минск",
             requiredMode = Schema.RequiredMode.REQUIRED
     )
     private String name;

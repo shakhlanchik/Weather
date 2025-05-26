@@ -118,11 +118,13 @@ public class ForecastServiceImpl implements ForecastService {
         Integer cityId = forecast.getCity().getId();
         final LocalDate date = forecast.getDate();
 
-        forecastRepository.delete(forecast);
+        forecastRepository.deleteById(forecastId);
 
-        forecastCache.evictSingleForecast(forecastId);
-        forecastCache.evictForecastsByCity(cityId);
-        forecastCache.evictForecastsByCityAndDate(cityId, date);
+        if (forecastCache != null) {
+            forecastCache.evictSingleForecast(forecastId);
+            forecastCache.evictForecastsByCity(cityId);
+            forecastCache.evictForecastsByCityAndDate(cityId, date);
+        }
     }
 
     @Override
@@ -141,6 +143,25 @@ public class ForecastServiceImpl implements ForecastService {
                 .stream().map(forecastMapper::toDto).toList();
 
         forecastCache.cacheForecastsByNameAndDate(name, date, forecasts);
+        return forecasts;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ForecastDto> getForecastsByName(String name, String country) {
+        if (name == null || name.isEmpty() && (country == null || country.isEmpty())) {
+            throw new BadRequestException("Имя города и страны обязательно");
+        }
+
+        List<ForecastDto> cached = forecastCache.getForecastsByName(name, country);
+        if (cached != null) {
+            return cached;
+        }
+
+        List<ForecastDto> forecasts = forecastRepository.findForecastsByName(name, country)
+                .stream().map(forecastMapper::toDto).toList();
+
+        forecastCache.cacheForecastsByName(name, country, forecasts);
         return forecasts;
     }
 
@@ -180,12 +201,18 @@ public class ForecastServiceImpl implements ForecastService {
 
         if (forecastDto.getTemperatureMin() > 100) {
             throw new BadRequestException("Минимальная температура не может быть выше 100°C");
-
         }
 
         if (forecastDto.getTemperatureMax() > 100) {
             throw new BadRequestException("Максимальная температура не может быть выше 100°C");
+        }
 
+        if (forecastDto.getHumidity() > 100) {
+            throw new BadRequestException("Относительная влажность воздуха не может быть больше 100%");
+        }
+
+        if (forecastDto.getHumidity() < 0) {
+            throw new BadRequestException("Относительная влажность воздуха не может быть меньше 0%");
         }
     }
 

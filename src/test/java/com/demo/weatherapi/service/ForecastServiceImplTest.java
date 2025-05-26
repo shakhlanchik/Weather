@@ -42,11 +42,11 @@ class ForecastServiceImplTest {
 
     @Test
     void create_successful() {
-        ForecastDto dto = new ForecastDto(1, 1, LocalDate.now(), 10.0, 20.0);
-        City city = new City(1, "TestCity");
+        ForecastDto dto = new ForecastDto(1, 1, LocalDate.now(), 10.0, 20.0, 80.0, 10.0);
+        City city = new City(1, "TestCountry", "TestCity");
         Forecast entity = new Forecast();
         Forecast savedEntity = new Forecast();
-        ForecastDto savedDto = new ForecastDto(100, 1, dto.getDate(), 10.0, 20.0);
+        ForecastDto savedDto = new ForecastDto(100, 1, dto.getDate(), 10.0, 20.0, 80.0, 10.0);
 
         when(cityRepository.findById(1)).thenReturn(Optional.of(city));
         when(forecastRepository.existsByCityAndDate(city, dto.getDate())).thenReturn(false);
@@ -65,7 +65,7 @@ class ForecastServiceImplTest {
 
     @Test
     void create_throwsIfCityNotFound() {
-        ForecastDto dto = new ForecastDto(1, 999, LocalDate.now(), 10.0, 20.0);
+        ForecastDto dto = new ForecastDto(1, 999, LocalDate.now(), 10.0, 20.0, 80.0, 10.0);
         when(cityRepository.findById(999)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> forecastService.create(dto))
@@ -75,8 +75,8 @@ class ForecastServiceImplTest {
 
     @Test
     void create_throwsIfForecastExists() {
-        ForecastDto dto = new ForecastDto(1, 1, LocalDate.now(), 10.0, 20.0);
-        City city = new City(1, "TestCity");
+        ForecastDto dto = new ForecastDto(1, 1, LocalDate.now(), 10.0, 20.0, 80.0, 10.0);
+        City city = new City(1, "TestCountry", "TestCity");
 
         when(cityRepository.findById(1)).thenReturn(Optional.of(city));
         when(forecastRepository.existsByCityAndDate(city, dto.getDate())).thenReturn(true);
@@ -88,7 +88,7 @@ class ForecastServiceImplTest {
 
     @Test
     void create_throwsIfInvalidTemperature() {
-        ForecastDto dto = new ForecastDto(1, 1, LocalDate.now(), 30.0, 20.0);
+        ForecastDto dto = new ForecastDto(1, 1, LocalDate.now(), 30.0, 20.0, 80.0, 10.0);
 
         assertThatThrownBy(() -> forecastService.create(dto))
                 .isInstanceOf(BadRequestException.class)
@@ -97,7 +97,7 @@ class ForecastServiceImplTest {
 
     @Test
     void create_throwsIfTemperatureBelowLimit() {
-        ForecastDto dto = new ForecastDto(1, 1, LocalDate.now(), -101.0, 20.0);
+        ForecastDto dto = new ForecastDto(1, 1, LocalDate.now(), -101.0, 20.0, 80.0, 10.0);
 
         assertThatThrownBy(() -> forecastService.create(dto))
                 .isInstanceOf(BadRequestException.class)
@@ -106,7 +106,7 @@ class ForecastServiceImplTest {
 
     @Test
     void create_throwsIfTemperatureAboveLimit() {
-        ForecastDto dto = new ForecastDto(1, 1, LocalDate.now(), 10.0, 101.0);
+        ForecastDto dto = new ForecastDto(1, 1, LocalDate.now(), 10.0, 101.0, 80.0, 10.0);
 
         assertThatThrownBy(() -> forecastService.create(dto))
                 .isInstanceOf(BadRequestException.class)
@@ -122,7 +122,7 @@ class ForecastServiceImplTest {
 
     @Test
     void create_throwsIfCityIdIsNull() {
-        ForecastDto dto = new ForecastDto(1, null, LocalDate.now(), 10.0, 20.0);
+        ForecastDto dto = new ForecastDto(1, null, LocalDate.now(), 10.0, 20.0, 80.0, 10.0);
 
         assertThatThrownBy(() -> forecastService.create(dto))
                 .isInstanceOf(BadRequestException.class)
@@ -131,7 +131,7 @@ class ForecastServiceImplTest {
 
     @Test
     void create_throwsIfDateIsNull() {
-        ForecastDto dto = new ForecastDto(1, 1, null, 10.0, 20.0);
+        ForecastDto dto = new ForecastDto(1, 1, null, 10.0, 20.0, 80.0, 10.0);
 
         assertThatThrownBy(() -> forecastService.create(dto))
                 .isInstanceOf(BadRequestException.class)
@@ -141,7 +141,7 @@ class ForecastServiceImplTest {
     @Test
     void readAll_successful() {
         Forecast forecast = new Forecast();
-        ForecastDto dto = new ForecastDto(1, 1, LocalDate.now(), 10.0, 20.0);
+        ForecastDto dto = new ForecastDto(1, 1, LocalDate.now(), 10.0, 20.0, 80.0, 10.0);
         when(forecastRepository.findAll()).thenReturn(List.of(forecast));
         when(forecastMapper.toDto(forecast)).thenReturn(dto);
 
@@ -154,7 +154,7 @@ class ForecastServiceImplTest {
 
     @Test
     void read_returnsFromCache() {
-        ForecastDto cached = new ForecastDto(1, 1, LocalDate.now(), 10.0, 20.0);
+        ForecastDto cached = new ForecastDto(1, 1, LocalDate.now(), 10.0, 20.0, 80.0, 10.0);
         when(forecastCache.getForecastById(1)).thenReturn(cached);
 
         ForecastDto result = forecastService.read(1);
@@ -166,7 +166,7 @@ class ForecastServiceImplTest {
     @Test
     void read_loadsFromRepoIfNotInCache() {
         Forecast entity = new Forecast();
-        ForecastDto dto = new ForecastDto(1, 1, LocalDate.now(), 10.0, 20.0);
+        ForecastDto dto = new ForecastDto(1, 1, LocalDate.now(), 10.0, 20.0, 80.0, 10.0);
 
         when(forecastCache.getForecastById(1)).thenReturn(null);
         when(forecastRepository.findById(1)).thenReturn(Optional.of(entity));
@@ -190,11 +190,11 @@ class ForecastServiceImplTest {
 
     @Test
     void update_successful() {
-        ForecastDto dto = new ForecastDto(1, 1, LocalDate.now(), 15.0, 25.0);
-        City city = new City(1, "TestCity");
+        ForecastDto dto = new ForecastDto(1, 1, LocalDate.now(), 15.0, 25.0, 80.0, 10.0);
+        City city = new City(1, "TestCountry", "TestCity");
         Forecast existing = new Forecast();
         Forecast updatedEntity = new Forecast();
-        ForecastDto updatedDto = new ForecastDto(1, 1, dto.getDate(), 15.0, 25.0);
+        ForecastDto updatedDto = new ForecastDto(1, 1, dto.getDate(), 15.0, 25.0, 80.0, 10.0);
 
         when(forecastRepository.findById(1)).thenReturn(Optional.of(existing));
         when(cityRepository.findById(1)).thenReturn(Optional.of(city));
@@ -212,7 +212,7 @@ class ForecastServiceImplTest {
 
     @Test
     void update_throwsIfForecastNotFound() {
-        ForecastDto dto = new ForecastDto(1, 1, LocalDate.now(), 10.0, 20.0);
+        ForecastDto dto = new ForecastDto(1, 1, LocalDate.now(), 10.0, 20.0, 80.0, 10.0);
         when(forecastRepository.findById(1)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> forecastService.update(dto, 1))
@@ -222,7 +222,7 @@ class ForecastServiceImplTest {
 
     @Test
     void update_throwsIfCityNotFound() {
-        ForecastDto dto = new ForecastDto(1, 999, LocalDate.now(), 10.0, 20.0);
+        ForecastDto dto = new ForecastDto(1, 999, LocalDate.now(), 10.0, 20.0, 80.0, 10.0);
         Forecast existing = new Forecast();
         when(forecastRepository.findById(1)).thenReturn(Optional.of(existing));
         when(cityRepository.findById(999)).thenReturn(Optional.empty());
@@ -241,7 +241,7 @@ class ForecastServiceImplTest {
 
     @Test
     void delete_successful() {
-        City city = new City(1, "City");
+        City city = new City(1, "TestCountry", "City");
         Forecast forecast = new Forecast();
         forecast.setId(1);
         forecast.setCity(city);
@@ -268,7 +268,7 @@ class ForecastServiceImplTest {
 
     @Test
     void getForecastsByCityId_returnsCached() {
-        List<ForecastDto> cached = List.of(new ForecastDto(1, 1, LocalDate.now(), 10.0, 20.0));
+        List<ForecastDto> cached = List.of(new ForecastDto(1, 1, LocalDate.now(), 10.0, 20.0, 80.0, 10.0));
         when(forecastCache.getForecastsByCityId(1)).thenReturn(cached);
 
         List<ForecastDto> result = forecastService.getForecastsByCityId(1);
@@ -280,7 +280,7 @@ class ForecastServiceImplTest {
     @Test
     void getForecastsByCityId_loadsFromRepoIfNotCached() {
         Forecast forecast = new Forecast();
-        ForecastDto dto = new ForecastDto(1, 1, LocalDate.now(), 10.0, 20.0);
+        ForecastDto dto = new ForecastDto(1, 1, LocalDate.now(), 10.0, 20.0, 80.0, 10.0);
         when(forecastCache.getForecastsByCityId(1)).thenReturn(null);
         when(forecastRepository.findByCityId(1)).thenReturn(List.of(forecast));
         when(forecastMapper.toDto(forecast)).thenReturn(dto);
@@ -307,7 +307,7 @@ class ForecastServiceImplTest {
 
     @Test
     void getForecastsByNameAndDate_returnsCached() {
-        List<ForecastDto> cached = List.of(new ForecastDto(1, 1, LocalDate.now(), 10.0, 20.0));
+        List<ForecastDto> cached = List.of(new ForecastDto(1, 1, LocalDate.now(), 10.0, 20.0, 80.0, 10.0));
         when(forecastCache.getForecastsByNameAndDate("Moscow", LocalDate.now())).thenReturn(cached);
 
         List<ForecastDto> result = forecastService.getForecastsByNameAndDate("Moscow", LocalDate.now());
@@ -319,7 +319,7 @@ class ForecastServiceImplTest {
     @Test
     void getForecastsByNameAndDate_loadsFromRepoIfNotCached() {
         Forecast forecast = new Forecast();
-        ForecastDto dto = new ForecastDto(1, 1, LocalDate.now(), 10.0, 20.0);
+        ForecastDto dto = new ForecastDto(1, 1, LocalDate.now(), 10.0, 20.0, 80.0, 10.0);
         when(forecastCache.getForecastsByNameAndDate("Moscow", LocalDate.now())).thenReturn(null);
         when(forecastRepository.findForecastsByNameAndDate("Moscow", LocalDate.now())).thenReturn(List.of(forecast));
         when(forecastMapper.toDto(forecast)).thenReturn(dto);
@@ -352,7 +352,7 @@ class ForecastServiceImplTest {
 
     @Test
     void findByFilters_filtersCorrectly() {
-        City city = new City(1, "Moscow");
+        City city = new City(1, "TestCountry", "Moscow");
         Forecast forecast = new Forecast();
         forecast.setCity(city);
         forecast.setDate(LocalDate.of(2023, 1, 1));
@@ -360,7 +360,7 @@ class ForecastServiceImplTest {
         forecast.setTemperatureMax(10.0);
 
         when(forecastRepository.findAll()).thenReturn(List.of(forecast));
-        when(forecastMapper.toDto(forecast)).thenReturn(new ForecastDto(1, 1, LocalDate.of(2023, 1, 1), 5.0, 10.0));
+        when(forecastMapper.toDto(forecast)).thenReturn(new ForecastDto(1, 1, LocalDate.of(2023, 1, 1), 5.0, 10.0, 80.0, 10.0));
 
         List<ForecastDto> result = forecastService.findByFilters("Moscow", LocalDate.of(2023, 1, 1), 4.0, 11.0);
 
@@ -369,7 +369,7 @@ class ForecastServiceImplTest {
 
     @Test
     void findByFilters_emptyResultIfNoMatch() {
-        City city = new City(1, "Moscow");
+        City city = new City(1, "TestCountry", "Moscow");
         Forecast forecast = new Forecast();
         forecast.setCity(city);
         forecast.setDate(LocalDate.of(2023, 1, 1));
@@ -385,13 +385,13 @@ class ForecastServiceImplTest {
 
     @Test
     void findByFilters_nullParameters() {
-        City city = new City(1, "Moscow");
+        City city = new City(1, "TestCountry", "Moscow");
         Forecast forecast = new Forecast();
         forecast.setCity(city);
         forecast.setDate(LocalDate.of(2023, 1, 1));
         forecast.setTemperatureMin(5.0);
         forecast.setTemperatureMax(10.0);
-        ForecastDto dto = new ForecastDto(1, 1, LocalDate.of(2023, 1, 1), 5.0, 10.0);
+        ForecastDto dto = new ForecastDto(1, 1, LocalDate.of(2023, 1, 1), 5.0, 10.0, 80.0, 10.0);
 
         when(forecastRepository.findAll()).thenReturn(List.of(forecast));
         when(forecastMapper.toDto(forecast)).thenReturn(dto);
@@ -403,13 +403,13 @@ class ForecastServiceImplTest {
 
     @Test
     void findByFilters_partialParameters() {
-        City city = new City(1, "Moscow");
+        City city = new City(1, "TestCountry", "Moscow");
         Forecast forecast = new Forecast();
         forecast.setCity(city);
         forecast.setDate(LocalDate.of(2023, 1, 1));
         forecast.setTemperatureMin(5.0);
         forecast.setTemperatureMax(10.0);
-        ForecastDto dto = new ForecastDto(1, 1, LocalDate.of(2023, 1, 1), 5.0, 10.0);
+        ForecastDto dto = new ForecastDto(1, 1, LocalDate.of(2023, 1, 1), 5.0, 10.0, 80.0, 10.0);
 
         when(forecastRepository.findAll()).thenReturn(List.of(forecast));
         when(forecastMapper.toDto(forecast)).thenReturn(dto);
@@ -421,10 +421,10 @@ class ForecastServiceImplTest {
 
     @Test
     void createBulk_successful() {
-        ForecastDto dto1 = new ForecastDto(null, 1, LocalDate.now(), 10.0, 20.0);
-        ForecastDto dto2 = new ForecastDto(null, 2, LocalDate.now(), 15.0, 25.0);
-        City city1 = new City(1, "City1");
-        City city2 = new City(2, "City2");
+        ForecastDto dto1 = new ForecastDto(null, 1, LocalDate.now(), 10.0, 20.0, 80.0, 10.0);
+        ForecastDto dto2 = new ForecastDto(null, 2, LocalDate.now(), 15.0, 25.0, 80.0, 10.0);
+        City city1 = new City(1, "TestCountry1", "City1");
+        City city2 = new City(2, "TestCountry2", "City2");
         Forecast entity1 = new Forecast();
         Forecast entity2 = new Forecast();
         Forecast saved1 = new Forecast();
@@ -435,8 +435,8 @@ class ForecastServiceImplTest {
         saved2.setId(2);
         saved2.setCity(city2);
         saved2.setDate(dto2.getDate());
-        ForecastDto savedDto1 = new ForecastDto(1, 1, LocalDate.now(), 10.0, 20.0);
-        ForecastDto savedDto2 = new ForecastDto(2, 2, LocalDate.now(), 15.0, 25.0);
+        ForecastDto savedDto1 = new ForecastDto(1, 1, LocalDate.now(), 10.0, 20.0, 80.0, 10.0);
+        ForecastDto savedDto2 = new ForecastDto(2, 2, LocalDate.now(), 15.0, 25.0, 80.0, 10.0);
 
         when(cityRepository.findAllById(Set.of(1, 2))).thenReturn(List.of(city1, city2));
         when(forecastRepository.existsByCityAndDate(any(), any())).thenReturn(false);
@@ -473,7 +473,7 @@ class ForecastServiceImplTest {
                 ),
                 // Отсутствующий город
                 Arguments.of(
-                        List.of(new ForecastDto(null, 10, testDate, 10.0, 20.0)),
+                        List.of(new ForecastDto(null, 10, testDate, 10.0, 20.0, 80.0, 10.0)),
                         "Города с ID не найдены",
                         new MockSetup[]{
                                 context -> when(context.cityRepository().findAllById(Set.of(10)))
@@ -482,11 +482,11 @@ class ForecastServiceImplTest {
                 ),
                 // Дубликат прогноза
                 Arguments.of(
-                        List.of(new ForecastDto(null, 1, testDate, 10.0, 20.0)),
+                        List.of(new ForecastDto(null, 1, testDate, 10.0, 20.0, 80.0, 10.0)),
                         "Прогноз для города ID 1 на дату " + testDate.format(DateTimeFormatter.ISO_DATE) + " уже существует",
                         new MockSetup[]{
                                 context -> {
-                                    City city = new City(1, "City1");
+                                    City city = new City(1, "TestCountry1", "City1");
                                     when(context.cityRepository().findAllById(Set.of(1)))
                                             .thenReturn(List.of(city));
                                     when(context.forecastRepository().existsByCityAndDate(city, testDate))
@@ -545,8 +545,8 @@ class ForecastServiceImplTest {
 
     @Test
     void createBulk_throwsIfInvalidDto() {
-        ForecastDto dto = new ForecastDto(null, 1, LocalDate.now(), 30.0, 20.0);
-        City city = new City(1, "City1");
+        ForecastDto dto = new ForecastDto(null, 1, LocalDate.now(), 30.0, 20.0, 80.0, 10.0);
+        City city = new City(1, "TestCountry1", "City1");
         when(cityRepository.findAllById(Set.of(1))).thenReturn(List.of(city));
         when(forecastRepository.existsByCityAndDate(city, dto.getDate())).thenReturn(false);
 
@@ -554,18 +554,18 @@ class ForecastServiceImplTest {
 
     @Test
     void updateBulk_successful() {
-        ForecastDto dto1 = new ForecastDto(1, 1, LocalDate.now(), 10.0, 20.0);
-        ForecastDto dto2 = new ForecastDto(2, 2, LocalDate.now(), 15.0, 25.0);
-        City city1 = new City(1, "City1");
-        City city2 = new City(2, "City2");
+        ForecastDto dto1 = new ForecastDto(1, 1, LocalDate.now(), 10.0, 20.0, 80.0, 10.0);
+        ForecastDto dto2 = new ForecastDto(2, 2, LocalDate.now(), 15.0, 25.0, 80.0, 10.0);
+        City city1 = new City(1, "TestCountry1", "City1");
+        City city2 = new City(2, "TestCountry2", "City2");
         Forecast existing1 = new Forecast();
         existing1.setId(1);
         Forecast existing2 = new Forecast();
         existing2.setId(2);
         Forecast updated1 = new Forecast();
         Forecast updated2 = new Forecast();
-        ForecastDto updatedDto1 = new ForecastDto(1, 1, LocalDate.now(), 10.0, 20.0);
-        ForecastDto updatedDto2 = new ForecastDto(2, 2, LocalDate.now(), 15.0, 25.0);
+        ForecastDto updatedDto1 = new ForecastDto(1, 1, LocalDate.now(), 10.0, 20.0, 80.0, 10.0);
+        ForecastDto updatedDto2 = new ForecastDto(2, 2, LocalDate.now(), 15.0, 25.0, 80.0, 10.0);
 
         when(forecastRepository.findAllById(List.of(1, 2))).thenReturn(List.of(existing1, existing2));
         when(cityRepository.findById(1)).thenReturn(Optional.of(city1));
@@ -590,12 +590,12 @@ class ForecastServiceImplTest {
         Forecast existing = new Forecast();
         existing.setId(1);
         when(forecastRepository.findAllById(List.of(1))).thenReturn(List.of(existing));
-        when(cityRepository.findById(1)).thenReturn(Optional.of(new City(1, "City1")));
+        when(cityRepository.findById(1)).thenReturn(Optional.of(new City(1, "TestCountry1", "City1")));
     }
 
     @Test
     void deleteBulk_successful() {
-        City city = new City(1, "City1");
+        City city = new City(1, "TestCountry1", "City1");
         Forecast forecast1 = new Forecast();
         forecast1.setId(1);
         forecast1.setCity(city);

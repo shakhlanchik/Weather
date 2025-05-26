@@ -18,6 +18,8 @@ public interface ForecastService {
 
     List<ForecastDto> getForecastsByNameAndDate(String name, LocalDate date);
 
+    List<ForecastDto> getForecastsByName(String name, String country);
+
     List<ForecastDto> getForecastsByCityId(Integer cityId);
 
     List<ForecastDto> findByFilters(
