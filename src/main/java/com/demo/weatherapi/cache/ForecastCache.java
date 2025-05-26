@@ -46,7 +46,7 @@ public class ForecastCache {
     }
 
     public List<ForecastDto> getForecastsByNameAndDate(String name, LocalDate date) {
-        String key = "name:" + name + dateStr + date;
+        String key = cityName + name + dateStr + date;
         return listForecastCache.get(key);
     }
 
@@ -63,7 +63,7 @@ public class ForecastCache {
 
     public void cacheForecastsByNameAndDate(
             String name, LocalDate date, List<ForecastDto> forecasts) {
-        String key = "name:" + name + dateStr + date;
+        String key = cityName + name + dateStr + date;
         listForecastCache.put(key, forecasts);
         log.debug("Cached {} forecasts for city on specified date", forecasts.size());
     }
@@ -89,12 +89,12 @@ public class ForecastCache {
     }
 
     public List<ForecastDto> getForecastsByName(String name, String country) {
-        String key = "name:" + name + "country:" + country;
+        String key = cityName + name + "country:" + country;
         return listForecastCache.get(key);
     }
 
     public void cacheForecastsByName(String name, String country, List<ForecastDto> forecasts) {
-        String key = "name:" + name + "country:" + country;
+        String key = cityName + name + "country:" + country;
         listForecastCache.put(key, forecasts);
         log.debug("Cached {} forecasts for city", forecasts.size());
     }
