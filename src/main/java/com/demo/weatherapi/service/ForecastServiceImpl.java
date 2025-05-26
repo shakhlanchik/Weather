@@ -208,11 +208,13 @@ public class ForecastServiceImpl implements ForecastService {
         }
 
         if (forecastDto.getHumidity() > 100) {
-            throw new BadRequestException("Относительная влажность воздуха не может быть больше 100%");
+            throw new BadRequestException(
+                    "Относительная влажность воздуха не может быть больше 100%");
         }
 
         if (forecastDto.getHumidity() < 0) {
-            throw new BadRequestException("Относительная влажность воздуха не может быть меньше 0%");
+            throw new BadRequestException(
+                    "Относительная влажность воздуха не может быть меньше 0%");
         }
     }
 

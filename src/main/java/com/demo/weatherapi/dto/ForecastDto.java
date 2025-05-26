@@ -68,7 +68,8 @@ public class ForecastDto {
     )
     private Double windSpeed;
 
-    public ForecastDto(Integer id, Integer cityId, LocalDate date, double minTemp, double maxTemp, double humidity, double windSpeed) {
+    public ForecastDto(Integer id, Integer cityId, LocalDate date, double minTemp,
+                       double maxTemp, double humidity, double windSpeed) {
         this.id = id;
         this.cityId = cityId;
         this.date = date;

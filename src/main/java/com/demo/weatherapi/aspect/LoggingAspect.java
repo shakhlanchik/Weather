@@ -60,8 +60,7 @@ public class LoggingAspect {
                         return error.getObjectName() + ": " + error.getDefaultMessage();
                     })
                     .collect(Collectors.joining(": "));
-        }
-        else if (ex instanceof MissingServletRequestParameterException msrpe) {
+        } else if (ex instanceof MissingServletRequestParameterException msrpe) {
             return "Отсутствует параметр: " + msrpe.getParameterName()
                     + " (" + msrpe.getParameterType() + ")";
         }
@@ -83,7 +82,8 @@ public class LoggingAspect {
 
     @AfterReturning(pointcut = "controllerMethods() || serviceMethods()", returning = "result")
     public void logAfter(org.aspectj.lang.JoinPoint joinPoint, Object result) {
-        if (result instanceof ResponseEntity<?> response && response.getStatusCode().is4xxClientError()) {
+        if (result instanceof ResponseEntity<?> response
+                && response.getStatusCode().is4xxClientError()) {
             MethodSignature signature = (MethodSignature) joinPoint.getSignature();
             logger.warn("Клиентская ошибка в {}.{}: статус {} - тело: {}",
                     signature.getDeclaringType().getSimpleName(),

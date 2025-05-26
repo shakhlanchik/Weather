@@ -34,12 +34,12 @@ public class VisitCounterInterceptor implements HandlerInterceptor {
     }
 
     private boolean isTechnicalRequest(String url) {
-        return url.contains("api-docs") ||
-                url.contains("swagger") ||
-                url.contains("${") ||
-                url.contains("%") ||
-                url.startsWith("/error") ||
-                url.startsWith("/actuator");
+        return url.contains("api-docs")
+                || url.contains("swagger")
+                || url.contains("${")
+                || url.contains("%")
+                || url.startsWith("/error")
+                || url.startsWith("/actuator");
     }
 
     private String normalizeUrl(String url) {

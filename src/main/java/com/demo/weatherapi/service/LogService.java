@@ -130,8 +130,8 @@ public class LogService {
     public ResponseEntity<Resource> getLogFileStream(String taskId) throws IOException {
         TaskInfo task = tasks.get(taskId);
         if (task == null || !STATUS_COMPLETED.equals(task.getStatus())) {
-            throw new IOException("Task not ready. Current status: " +
-                    (task != null ? task.getStatus() : "null"));
+            throw new IOException("Task not ready. Current status: "
+                    + (task != null ? task.getStatus() : "null"));
         }
 
         Path filePath = Paths.get(LOG_DIR, task.getResultFile());
@@ -151,8 +151,8 @@ public class LogService {
     public void getLogFileContent(String taskId) throws IOException {
         TaskInfo task = tasks.get(taskId);
         if (task == null || !STATUS_COMPLETED.equals(task.getStatus())) {
-            throw new IOException("Task not ready. Current status: " +
-                    (task != null ? task.getStatus() : "null"));
+            throw new IOException("Task not ready. Current status: "
+                    + (task != null ? task.getStatus() : "null"));
         }
 
         Path filePath = Paths.get(LOG_DIR, task.getResultFile());
