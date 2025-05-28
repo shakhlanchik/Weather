@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  frontend:
+    build:
+      context: ./frontendWeather/frontendweather
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    environment:
+      REACT_APP_BACKEND_URL: http://backend:8080
+    networks:
+      - app-network
+
+  backend:
+    build:
+      context: ./weatherAPI
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db 
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/weather
+      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update 
+    networks:
+      - app-network
+
+  db:
+    image: postgres:13-alpine
+    restart: always 
+    environment:
+
+      POSTGRES_DB: weather
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+    ports:
+      - "5432:5432"
+
+    networks:
+      - app-network
+
+networks: #
+  app-network:
+    driver: bridge
+
+volumes:
+  pgdata:
